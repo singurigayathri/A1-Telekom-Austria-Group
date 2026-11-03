@@ -94,10 +94,10 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     <button data-t="method">Method &amp; sources</button>
   </nav>
 </div></header>
- 
+
 <main>
 <div id="banner" class="banner">Showing <b>SAMPLE price data</b> (simulated, not real). The daily price file was not found, so the page is showing simulated numbers. Financials are real FY2025 figures.</div>
- 
+
 <!-- OVERVIEW -->
 <section class="tab on" id="overview">
   <div class="grid kpis" id="kpis"></div>
@@ -109,7 +109,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     <p class="note" style="margin-top:10px"><b>Read with care:</b> net debt is as shown by the source and may treat leases differently across companies, which can make A1 look less indebted than peers. † Swisscom revenue growth is driven by the Vodafone Italia acquisition. Check both against the annual reports before quoting.</p>
   </div>
 </section>
- 
+
 <!-- PEERS -->
 <section class="tab" id="peers">
   <div class="card">
@@ -122,7 +122,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     <div class="scroll"><table id="raw"></table></div>
   </div>
 </section>
- 
+
 <!-- MARKET -->
 <section class="tab" id="market">
   <div class="card">
@@ -150,7 +150,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     <div class="card"><h2>Rolling 30-day volatility (annualised)</h2><div class="chart"><canvas id="volChart"></canvas></div></div>
   </div>
 </section>
- 
+
 <!-- THESIS -->
 <section class="tab" id="thesis">
   <div class="card">
@@ -161,7 +161,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     <div class="reg" id="reg"></div>
   </div>
 </section>
- 
+
 <!-- COUNTRY -->
 <section class="tab" id="country">
   <div class="card">
@@ -172,7 +172,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     <ul class="small" id="cnotes"></ul>
   </div>
 </section>
- 
+
 <!-- METHOD -->
 <section class="tab" id="method">
   <div class="card">
@@ -183,7 +183,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
       <li><b>Swisscom</b> revenue jumped in 2025 because of the Vodafone Italia acquisition, so its growth and debt are not like-for-like.</li>
       <li><b>A1 cross-check:</b> A1's own FY2025 report gives revenue EUR 5,577m, EBITDA EUR 2,062m (37.0%) and capex EUR 889m including spectrum. The peer table uses stockanalysis.com for every company (A1: revenue 5,474, derived EBITDA 1,987, margin 36.3%), so all companies share one source and definition. A1's net debt excluding leases is about EUR 392m (financial debt 754 less cash 362); the 1,848 in the table includes leases, which is closer to how the other telcos report.</li>
       <li><b>Net debt</b> is total debt less cash and investments as shown by the source. Definitions differ by company (leases, hybrids).</li>
-      <li><b>Prices (automatic):</b> a free GitHub job runs every weekday evening, downloads one year of daily closes from Yahoo Finance for each company's home-exchange ticker (local currency, adjusted for dividends and splits), and saves them as <code>data/benchmark_prices.json</code>. The page reads that file when it opens, so it is always the latest daily update with no key and no clicking. Benchmark is the STOXX Europe 600 index (^STOXX). Each company's returns are in its own currency, so there is no EUR/USD noise.</li>
+      <li><b>Prices (automatic):</b> a free GitHub job runs every 30 minutes on weekdays while European markets are open, downloads one year of daily closes from Yahoo Finance for each company's home-exchange ticker (local currency, adjusted for dividends and splits), and saves them as <code>data/benchmark_prices.json</code>. The page reads that file when it opens, so it always shows the latest update (about 15 minutes delayed during the day, official close after the market shuts) with no key and no clicking. Benchmark is the STOXX Europe 600 index (^STOXX). Each company's returns are in its own currency, so there is no EUR/USD noise.</li>
       <li><b>Prices (optional manual refresh):</b> you can still paste a Twelve Data key on the Market tab to pull US-listed ADR prices (USD). This replaces the daily data until you reload the page.</li>
       <li><b>Volatility</b> = standard deviation of daily log returns × √252. <b>Beta</b> = covariance with the benchmark ÷ variance of the benchmark on matching dates. <b>Max drawdown</b> = worst peak-to-trough fall in the window.</li>
       <li>Not yet covered: share prices for Hrvatski Telekom, Telekom Slovenije and Makedonski Telekom (no free price feed), A1's own country KPIs, Telekom Slovenije financials, GARCH.</li>
@@ -193,7 +193,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
 </section>
 </main>
 <footer>Built for the thesis on A1 Telekom Austria vs European peers · public data only</footer>
- 
+
 <script>
 /* ---------- DATA: real FY2025 / FY2024 (millions, local currency) ---------- */
 const PEERS=[
@@ -251,7 +251,7 @@ const COUNTRIES={
   {n:'life:)',st:'Unlisted subsidiary',own:'Turkcell (BIST: TCELL, NYSE: TKC)',basis:'Listed parent, group level',f:{cur:'TRY',yr:2025,rev:241471,ebitda:104017,grp:true},note:'Turkcell does not break out Belarus (it sits in "Other"). Group figures are inflation-restated (IAS 29), so margins are not comparable with the EUR peers.'},
   {n:'Beltelecom',st:'State-owned',own:'Republic of Belarus',basis:'No public figures found',note:'Not searched in depth.'}]
 };
- 
+
 /* ---------- STATE ---------- */
 let prices={};      // id -> [{d:'YYYY-MM-DD', c:number}] ascending
 let isLive=false;
@@ -260,7 +260,7 @@ const symbols={}; PEERS.forEach(p=>symbols[p.id]=p.adr); symbols.BM='VGK';
 const $=s=>document.querySelector(s);
 const fmt=(v,d=1)=>v==null||!isFinite(v)?'n/a':v.toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d});
 const RED='#E10600', DRED='#9B0000', INK='#2B2B2B', GREY='#B8B8B8', MID='#6B6B6B';
- 
+
 /* ---------- MATH ---------- */
 function logret(arr){const r=[];for(let i=1;i<arr.length;i++)r.push({d:arr[i].d,r:Math.log(arr[i].c/arr[i-1].c)});return r}
 function mean(a){return a.reduce((s,x)=>s+x,0)/a.length}
@@ -274,7 +274,7 @@ function ytd(arr){const y=arr[arr.length-1].d.slice(0,4);const prev=[...arr].rev
 function rollVol(rets,w=30){const o=[];for(let i=w;i<=rets.length;i++){o.push({d:rets[i-1].d,v:sd(rets.slice(i-w,i).map(x=>x.r))*Math.sqrt(252)*100})}return o}
 function ols(x,y){const n=x.length,mx=mean(x),my=mean(y);let sxy=0,sxx=0,syy=0;for(let i=0;i<n;i++){sxy+=(x[i]-mx)*(y[i]-my);sxx+=(x[i]-mx)**2;syy+=(y[i]-my)**2}
   const b=sxy/sxx,a=my-b*mx,r2=sxy*sxy/(sxx*syy);const sse=y.reduce((s,yi,i)=>s+(yi-a-b*x[i])**2,0);const se=Math.sqrt(sse/(n-2)/sxx);return{a,b,r2,t:b/se,n}}
- 
+
 /* ---------- SAMPLE DATA (seeded, clearly labelled) ---------- */
 function rng(seed){let s=seed;return()=>{s=(s*1664525+1013904223)%4294967296;return s/4294967296}}
 function norm(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
@@ -287,7 +287,7 @@ function makeSample(){
   for(const id of Object.keys(vols)){const rr=rng(100+k++);let p=100;out[id]=dates.map((d,i)=>{const ret=bet[id]*mk[i]+norm(rr)*Math.sqrt(Math.max(vols[id]**2-(bet[id]*.009)**2,1e-6));p*=Math.exp(ret);return{d,c:p}})}
   return out;
 }
- 
+
 /* ---------- RENDER: OVERVIEW ---------- */
 function pct(arr,v,hi){const s=[...arr].sort((a,b)=>a-b);const i=s.indexOf(v);const t=s.length>1?i/(s.length-1):.5;return hi?t:1-t}
 function renderOverview(){
@@ -310,7 +310,7 @@ function renderOverview(){
   }
   $('#heat').innerHTML=h;
 }
- 
+
 /* ---------- RENDER: PEERS ---------- */
 function renderPeers(){
   const sel=$('#metricSel');if(!sel.options.length)sel.innerHTML=METRICS.map(m=>`<option value="${m.k}">${m.l}</option>`).join('');
@@ -324,7 +324,7 @@ function renderPeers(){
   for(const p of PEERS)h+=`<tr class="${p.id==='A1'?'a1':''}"><td>${p.name}</td><td>${p.cur}</td><td>${fmt(p.rev[0],0)}</td><td>${fmt(p.ebit[0],0)}</td><td>${fmt(p.da[0],0)}</td><td>${fmt(p.ebitda,0)}</td><td>${fmt(p.capex[0],0)}</td><td>${fmt(p.nd[0],0)}</td></tr>`;
   $('#raw').innerHTML=h+'<tr><td colspan="8" class="small" style="text-align:left">* EBIT + D&amp;A, derived. Source: stockanalysis.com, FY2025.</td></tr>';
 }
- 
+
 /* ---------- MARKET ---------- */
 function stats(){
   const bret=prices.BM?logret(prices.BM):null;const out={};
@@ -353,7 +353,7 @@ function renderMarket(){
 const GREYS=['#6B6B6B','#8C8C8C','#A3A3A3','#4D4D4D','#C2C2C2','#7A7A7A','#999','#B5B5B5','#5E5E5E'];
 function shade(id){return GREYS[PEERS.findIndex(p=>p.id===id)%GREYS.length]}
 function drawChart(key,canvas,cfg,labels){if(labels)cfg.data.labels=labels;if(charts[key])charts[key].destroy();charts[key]=new Chart($('#'+canvas),cfg)}
- 
+
 /* ---------- THESIS ---------- */
 function tcrit(df){const T=[12.706,4.303,3.182,2.776,2.571,2.447,2.365,2.306,2.262,2.228];return df<=10?T[df-1]:df<=30?2.1:1.96}
 function renderThesis(){
@@ -372,7 +372,7 @@ function renderThesis(){
   $('#reg').innerHTML=`<div>Slope<b>${fmt(f.b,2)}</b></div><div>Intercept<b>${fmt(f.a,1)}</b></div><div>R²<b>${fmt(f.r2,2)}</b></div><div>t-stat<b>${fmt(f.t,2)}</b></div><div>Observations<b>${f.n}</b></div>`+
    `<div style="grid-column:1/-1;background:none;padding:0" class="small">${Math.abs(f.t)<tcrit(f.n-2)?`Not statistically significant at 5% (|t| below ${fmt(tcrit(f.n-2),2)} for ${f.n-2} degrees of freedom).`:`Significant at 5% (|t| above ${fmt(tcrit(f.n-2),2)}), but with n=${f.n} treat as indicative.`}${isLive?'':' (Sample data: ignore the result.)'}</div>`;
 }
- 
+
 /* ---------- COUNTRY ---------- */
 function renderCountry(){
   const sel=$('#cSel');if(!sel.options.length)sel.innerHTML=Object.keys(COUNTRIES).map(c=>`<option>${c}</option>`).join('');
@@ -393,7 +393,7 @@ function renderCountry(){
   $('#ctable').innerHTML=h;
   $('#cnotes').innerHTML=notes.map(n=>`<li>${n}</li>`).join('')+`<li>* Volatility is for the listed parent used as comparator (ADR, USD), only where prices are loaded.</li><li>Ownership is as I understand it from public sources: verify before quoting. Margins use each company's own currency, so they compare, but absolute revenue does not.</li>`;
 }
- 
+
 /* ---------- FETCH ---------- */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function fetchOne(sym,key){
@@ -420,13 +420,13 @@ async function fetchAll(){
 }
 let feedInfo=null;
 function setBanner(){const b=$('#banner');
-  if(isLive&&feedInfo){b.className='banner live';b.innerHTML=`Showing <b>LIVE daily prices</b>, last updated <b>${feedInfo.updated}</b> (Yahoo Finance, home-exchange tickers, local currency). Refreshes automatically every weekday evening. Financials are FY2025 reported figures.`}
+  if(isLive&&feedInfo){b.className='banner live';b.innerHTML=`Showing <b>LIVE daily prices</b>, last updated <b>${feedInfo.updated}</b> (Yahoo Finance, home-exchange tickers, local currency). Refreshes automatically every 30 minutes on weekdays while markets are open (prices are about 15 minutes delayed). Financials are FY2025 reported figures.`}
   else if(isLive){b.className='banner live';b.innerHTML='Showing <b>LIVE prices</b> from Twelve Data (US-listed ADRs, USD), fetched just now. Reload the page to go back to the daily update.'}
   else{b.className='banner';b.innerHTML='Showing <b>SAMPLE price data</b> (simulated, not real). The daily price file was not found yet: run the GitHub job once (see the setup steps). Financials are real FY2025 figures.'}
   const fn=$('#feedNote');if(fn)fn.textContent=feedInfo&&isLive?`Daily update of ${feedInfo.updated}. ${feedInfo.n} of ${feedInfo.total} series loaded${feedInfo.failed.length?'. Not available: '+feedInfo.failed.join(', '):''}.`:'No daily file found yet, so sample data is shown.';
   const bh=$('#betaH');if(bh)bh.textContent='Beta vs '+(feedInfo&&isLive?'STOXX 600':'benchmark');}
 function renderAll(){renderOverview();renderPeers();renderMarket();renderThesis();renderCountry()}
- 
+
 /* ---------- INIT ---------- */
 $('#tk').innerHTML=[...PEERS,BENCH].map(p=>`<div><label>${p.short||p.name}</label><input data-id="${p.id}" value="${symbols[p.id]}"></div>`).join('');
 $('#tk').addEventListener('input',e=>{if(e.target.dataset.id)symbols[e.target.dataset.id]=e.target.value.trim().toUpperCase()});
