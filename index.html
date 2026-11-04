@@ -154,12 +154,14 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
 <!-- THESIS -->
 <section class="tab" id="thesis">
   <div class="card">
-    <h2>Do fundamentals explain stock volatility?</h2>
-    <p class="note">Cross-section of the listed peers: annualised volatility regressed on one fundamental at a time. With so few companies this is descriptive, not proof. A1 is the red dot.</p>
+    <h2>Quick view: do fundamentals explain stock volatility?</h2>
+    <p class="note">Last 12 months, the 9 core peers, one fundamental at a time. Descriptive only: the proper tests are further down (panel regression, GARCH, event study). A1 is the red dot.</p>
     <div class="row"><label for="xSel">Explanatory variable</label><select id="xSel"></select></div>
     <div class="chart"><canvas id="scatter"></canvas></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="downloadPNG('sc','quick_view_scatter.png')">Download chart (PNG)</button></div>
     <div class="reg" id="reg"></div>
   </div>
+  <div id="tfull"><div class="card" style="margin-top:14px"><p class="note">Loading thesis results…</p></div></div>
 </section>
 
 <!-- COUNTRY -->
@@ -189,6 +191,20 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
       <li>Not yet covered: share prices for Hrvatski Telekom, Telekom Slovenije and Makedonski Telekom (no free price feed), A1's own country KPIs, Telekom Slovenije financials, GARCH.</li>
     </ul>
     <p class="small">University exercise. Not investment advice.</p>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>Thesis method (Thesis test tab)</h2>
+    <ul>
+      <li><b>Research question:</b> do telco fundamentals (EBITDA margin, capex intensity, leverage) explain differences in share-price volatility across European telcos, with A1 as the case company?</li>
+      <li><b>Data:</b> up to 10 years of daily prices and annual financial statements from Yahoo Finance (via yfinance), downloaded by a weekly GitHub job. Companies Yahoo does not return are listed on the tab. Yahoo normally gives only about 4 years of annual statements, so the panel covers roughly the last 4 fiscal years.</li>
+      <li><b>Panel:</b> one row per company and fiscal year. Volatility = standard deviation of daily log returns over the 12 months ending at the fiscal year-end × √252. EBITDA = EBIT + depreciation &amp; amortisation. Rows with non-positive EBITDA or extreme leverage are dropped.</li>
+      <li><b>Regressions (OLS):</b> volatility on EBITDA margin, capex/sales and net debt/EBITDA. M1 pooled; M2 adds year effects; M3 adds company effects; M4 adds market beta. Standard errors are clustered by company. Stars: *** p&lt;0.01, ** p&lt;0.05, * p&lt;0.10.</li>
+      <li><b>Robustness:</b> total-return volatility (dividends included), EUR-converted returns, fundamentals lagged one year, without A1, and two sub-periods.</li>
+      <li><b>GARCH(1,1):</b> fitted per company on the last 5 years of daily price returns (normal errors). Persistence = α + β. Long-run volatility = √(ω / (1 − α − β)) × √252.</li>
+      <li><b>Event study:</b> market model fitted on 250 trading days that end 30 days before the event, benchmark STOXX Europe 600, total-return series. Abnormal return = actual minus predicted. CAR = sum over the window; t-statistic uses the estimation-window residual deviation. Events come from <code>events.csv</code> plus earnings dates where Yahoo provides them. Check that Yahoo adjusted the price around the 22 Sep 2023 EuroTeleSites spin-off.</li>
+      <li><b>Limits:</b> few companies and years; volatility and fundamentals are measured over the same year (the lagged model addresses reverse causality only partly); reported IFRS figures include one-offs; Yahoo data is free but unaudited; no sentiment (AI) layer yet.</li>
+      <li><b>Reproducibility:</b> every number on the tab comes from <code>data/thesis_results.json</code> and <code>data/panel.csv</code>, both downloadable, with the update date shown.</li>
+    </ul>
   </div>
 </section>
 </main>
@@ -425,7 +441,7 @@ function setBanner(){const b=$('#banner');
   else{b.className='banner';b.innerHTML='Showing <b>SAMPLE price data</b> (simulated, not real). The daily price file was not found yet: run the GitHub job once (see the setup steps). Financials are real FY2025 figures.'}
   const fn=$('#feedNote');if(fn)fn.textContent=feedInfo&&isLive?`Daily update of ${feedInfo.updated}. ${feedInfo.n} of ${feedInfo.total} series loaded${feedInfo.failed.length?'. Not available: '+feedInfo.failed.join(', '):''}.`:'No daily file found yet, so sample data is shown.';
   const bh=$('#betaH');if(bh)bh.textContent='Beta vs '+(feedInfo&&isLive?'STOXX 600':'benchmark');}
-function renderAll(){renderOverview();renderPeers();renderMarket();renderThesis();renderCountry()}
+function renderAll(){renderOverview();renderPeers();renderMarket();renderThesis();renderCountry();if(thesisRes!==undefined&&document.querySelector('#thesis.on'))renderThesisFull()}
 
 /* ---------- INIT ---------- */
 $('#tk').innerHTML=[...PEERS,BENCH].map(p=>`<div><label>${p.short||p.name}</label><input data-id="${p.id}" value="${symbols[p.id]}"></div>`).join('');
@@ -456,6 +472,62 @@ async function loadFeed(){
   }catch(e){/* keep sample data; banner already says so */}
 }
 loadFeed();
+
+/* ---------- THESIS: full results from the weekly job ---------- */
+var thesisRes=null;
+function stars(p){return p<0.01?'***':p<0.05?'**':p<0.1?'*':''}
+const VARN={ebitda_m:'EBITDA margin (%)',capex_s:'Capex / sales (%)',lev:'Net debt / EBITDA (x)',beta:'Market beta',ebitda_m_lag:'EBITDA margin, lagged (%)',capex_s_lag:'Capex / sales, lagged (%)',lev_lag:'Net debt / EBITDA, lagged (x)'};
+function csvEsc(v){v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function downloadCSV(name,rows){const t=rows.map(r=>r.map(csvEsc).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function downloadPNG(key,name){const ch=charts[key];if(!ch)return;const c=document.createElement('canvas');c.width=ch.canvas.width;c.height=ch.canvas.height;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(ch.canvas,0,0);const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function modelCell(m,v){if(!m.ok||!m.coefs[v])return '';const c=m.coefs[v];return `${fmt(c.b,2)}${stars(c.p)}<br><span class="small">(${fmt(c.se,2)})</span>`}
+function renderThesisFull(){
+  const R=thesisRes,box=$('#tfull');
+  if(!R){box.innerHTML='<div class="card" style="margin-top:14px"><h2>Full thesis analysis</h2><p class="note">Not available yet. Run the <b>Thesis analysis</b> job once (Actions tab, Run workflow). It creates <code>data/thesis_results.json</code> and this section fills in.</p></div>';return}
+  const names={};R.universe.forEach(u=>names[u.id]=u.name);
+  let h='';
+  const P=R.panel;
+  h+=`<div class="card" style="margin-top:14px"><h2>Dataset</h2><p class="note">Updated ${(R.updated||'').slice(0,16).replace('T',' ')} UTC. ${R.universe.length} companies with prices; ${P.rows} company-years built, ${P.usable_rows} usable in the regressions (${P.companies} companies${P.years?', fiscal years '+P.years[0]+' to '+P.years[1]:''}).${R.failed.length?' Not available from Yahoo: '+R.failed.join('; ')+'.':''}</p>
+   <div class="row"><button class="btn ghost" onclick="location.href='data/panel.csv'">Download panel dataset (CSV)</button><button class="btn ghost" id="expCo">Download company list (CSV)</button></div></div>`;
+  // regression table
+  const ms=R.models;
+  const vars=['ebitda_m','capex_s','lev','beta'];
+  h+=`<div class="card" style="margin-top:14px"><h2>Panel regression: what explains volatility?</h2><p class="note">Dependent variable: annualised volatility (%) over the fiscal year. Coefficient with clustered standard error in brackets. *** p&lt;0.01, ** p&lt;0.05, * p&lt;0.10.</p><div class="scroll"><table id="regT"><tr><th>Variable</th>${ms.map(m=>`<th>${m.label.split(' ')[0]}<br><span class="small" style="text-transform:none;letter-spacing:0">${m.label.split(' ').slice(1).join(' ')}</span></th>`).join('')}</tr>`;
+  for(const v of vars)h+=`<tr><td>${VARN[v]}</td>${ms.map(m=>`<td>${modelCell(m,v)}</td>`).join('')}</tr>`;
+  h+=`<tr><td>Year effects</td>${ms.map(m=>`<td>${m.ok?(m.year_fe?'yes':'no'):''}</td>`).join('')}</tr><tr><td>Company effects</td>${ms.map(m=>`<td>${m.ok?(m.company_fe?'yes':'no'):''}</td>`).join('')}</tr><tr><td>Observations</td>${ms.map(m=>`<td>${m.ok?m.n:'n/a'}</td>`).join('')}</tr><tr><td>Companies</td>${ms.map(m=>`<td>${m.ok?m.companies:''}</td>`).join('')}</tr><tr><td>R²</td>${ms.map(m=>`<td>${m.ok?fmt(m.r2,2):''}</td>`).join('')}</tr></table></div>
+   <div class="row" style="margin-top:10px"><button class="btn ghost" id="expReg">Download table (CSV)</button></div>
+   <p class="small">How to read: a positive coefficient means higher values of that variable go with higher volatility. Compare columns: if the sign and size hold from M1 to M4, the result is robust to year and company effects.</p></div>`;
+  // robustness
+  h+=`<div class="card" style="margin-top:14px"><h2>Robustness checks</h2><p class="note">Same three variables, different samples and measures (all with year and company effects unless stated).</p><div class="scroll"><table id="robT"><tr><th>Check</th><th>EBITDA margin</th><th>Capex / sales</th><th>Net debt / EBITDA</th><th>Obs.</th></tr>`;
+  for(const m of R.robustness){const ks=m.ok?Object.keys(m.coefs):[];h+=`<tr><td>${m.label}</td>`+(m.ok?ks.map(k=>`<td>${modelCell(m,k)}</td>`).join('')+`<td>${m.n}</td>`:`<td colspan="4" class="small" style="text-align:left">${m.reason}</td>`)+'</tr>'}
+  h+=`</table></div><div class="row" style="margin-top:10px"><button class="btn ghost" id="expRob">Download table (CSV)</button></div></div>`;
+  // garch
+  h+=`<div class="card" style="margin-top:14px"><h2>GARCH(1,1) volatility model</h2><p class="note">Fitted on the last 5 years of daily price returns. Persistence close to 1 means volatility shocks fade slowly. Long-run volatility is the level the model reverts to.</p><div class="scroll"><table id="garT"><tr><th>Company</th><th>α (shock)</th><th>β (memory)</th><th>Persistence</th><th>Long-run vol (%)</th><th>Latest vol (%)</th><th>Days</th></tr>`;
+  const gs=[...R.garch].sort((a,b)=>(a.id==='A1'?-1:b.id==='A1'?1:0));
+  for(const g of gs)h+=`<tr class="${g.id==='A1'?'a1':''}"><td>${names[g.id]||g.id}</td><td>${fmt(g.alpha,3)}</td><td>${fmt(g.beta,3)}</td><td>${fmt(g.persistence,3)}</td><td>${g.long_run_vol==null?'n/a':fmt(g.long_run_vol)}</td><td>${fmt(g.last_cond_vol)}</td><td>${g.n}</td></tr>`;
+  h+=`</table></div><div class="chart" style="margin-top:12px"><canvas id="garChart"></canvas></div><div class="row" style="margin-top:10px"><button class="btn ghost" id="expGar">Download table (CSV)</button><button class="btn ghost" onclick="downloadPNG('gar','garch_conditional_volatility.png')">Download chart (PNG)</button></div></div>`;
+  // events
+  h+=`<div class="card" style="margin-top:14px"><h2>Event study</h2><p class="note">Abnormal return = actual return minus what the market model predicts. CAR = cumulative abnormal return over the window, in %. |t| above about 2 is significant. Add your own events in <code>events.csv</code>.</p>`;
+  if(R.event_summary.length){h+=`<div class="scroll"><table id="evS"><tr><th>Group</th><th>Window</th><th>Events</th><th>Mean CAR (%)</th><th>t-stat</th></tr>`+R.event_summary.map(e=>`<tr><td>${e.group}</td><td>${e.window}</td><td>${e.n}</td><td>${fmt(e.mean_car,2)}</td><td>${fmt(e.t,2)}</td></tr>`).join('')+'</table></div>'}
+  const evs=R.events.filter(e=>e.label!=='Earnings');
+  if(evs.length)h+=`<h2 style="margin-top:14px;font-size:14px">Single events</h2><div class="scroll"><table id="evT"><tr><th>Company</th><th>Date</th><th>Event</th><th>CAR [-1,+1] (%)</th><th>t</th><th>CAR [-5,+5] (%)</th><th>t</th></tr>`+evs.map(e=>`<tr><td>${names[e.id]||e.id}</td><td>${e.date}</td><td style="text-align:left">${e.label}</td><td>${fmt(e.car_1_1,2)}</td><td>${fmt(e.t_1_1,2)}</td><td>${fmt(e.car_5_5,2)}</td><td>${fmt(e.t_5_5,2)}</td></tr>`).join('')+'</table></div>';
+  h+=`<div class="row" style="margin-top:10px"><button class="btn ghost" id="expEv">Download all events (CSV)</button></div></div>`;
+  box.innerHTML=h;
+  // charts + exports
+  const dates=[...new Set(Object.values(R.garch_series).flatMap(a=>a.map(x=>x[0])))].sort();
+  const ds=Object.keys(R.garch_series).map(id=>{const m=new Map(R.garch_series[id]);return{label:names[id]||id,data:dates.map(d=>m.has(d)?m.get(d):null),borderColor:id==='A1'?RED:shade(id)||GREY,borderWidth:id==='A1'?3:1.2,pointRadius:0,spanGaps:true,tension:.15}});
+  drawChart('gar','garChart',{type:'line',data:{labels:dates,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}},title:{display:true,text:'GARCH conditional volatility, annualised % (last 252 trading days)'}},scales:{x:{ticks:{maxTicksLimit:6,autoSkip:true},grid:{display:false}},y:{grid:{color:'#eee'}}}}});
+  $('#expCo').onclick=()=>downloadCSV('companies.csv',[['id','name','country','ticker','price_days','fund_years'],...R.universe.map(u=>[u.id,u.name,u.country,u.ticker,u.price_days,u.fund_years])]);
+  $('#expReg').onclick=()=>{const rows=[['variable',...ms.map(m=>m.label+' coef'),...ms.map(m=>m.label+' se'),...ms.map(m=>m.label+' p')]];for(const v of vars)rows.push([VARN[v],...ms.map(m=>m.ok&&m.coefs[v]?m.coefs[v].b:''),...ms.map(m=>m.ok&&m.coefs[v]?m.coefs[v].se:''),...ms.map(m=>m.ok&&m.coefs[v]?m.coefs[v].p:'')]);rows.push(['observations',...ms.map(m=>m.ok?m.n:'')]);rows.push(['R2',...ms.map(m=>m.ok?m.r2:'')]);downloadCSV('panel_regression.csv',rows)};
+  $('#expRob').onclick=()=>{const rows=[['check','variable','coef','se','t','p','n']];for(const m of R.robustness)if(m.ok)for(const k of Object.keys(m.coefs)){const c=m.coefs[k];rows.push([m.label,VARN[k]||k,c.b,c.se,c.t,c.p,m.n])}downloadCSV('robustness.csv',rows)};
+  $('#expGar').onclick=()=>downloadCSV('garch.csv',[['company','alpha','beta','persistence','long_run_vol','latest_vol','days'],...R.garch.map(g=>[names[g.id]||g.id,g.alpha,g.beta,g.persistence,g.long_run_vol,g.last_cond_vol,g.n])]);
+  $('#expEv').onclick=()=>downloadCSV('event_study.csv',[['company','date','event','car_-1_+1','t','car_-5_+5','t'],...R.events.map(e=>[names[e.id]||e.id,e.date,e.label,e.car_1_1,e.t_1_1,e.car_5_5,e.t_5_5])]);
+}
+async function loadThesis(){
+  try{const r=await fetch('data/thesis_results.json?'+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);thesisRes=await r.json()}catch(e){thesisRes=null}
+  renderThesisFull();
+}
+loadThesis();
 </script>
 </body>
 </html>
