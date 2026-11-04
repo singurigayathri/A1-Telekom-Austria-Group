@@ -47,10 +47,20 @@ UNIVERSE = {
     "HT":    ("HT.ZA",      "Hrvatski Telekom",    "Croatia"),
     "TLSG":  ("TLSG.LJ",    "Telekom Slovenije",   "Slovenia"),
 }
+# Your own extra tickers from tickers.csv (id,ticker,name,country) join the panel too.
+try:
+    import csv
+    with open("tickers.csv", newline="", encoding="utf-8") as _f:
+        for _r in csv.DictReader(_f):
+            _i, _t = (_r.get("id") or "").strip(), (_r.get("ticker") or "").strip()
+            if _i and _t and _i not in UNIVERSE:
+                UNIVERSE[_i] = (_t, (_r.get("name") or _i).strip(), (_r.get("country") or "").strip())
+except FileNotFoundError:
+    pass
 BENCH_TICKER = "^STOXX"
 # Yahoo FX symbol that gives units of local currency per 1 EUR, and the price unit divisor
 FX = {".SW": ("EURCHF=X", 1), ".ST": ("EURSEK=X", 1), ".OL": ("EURNOK=X", 1),
-      ".WA": ("EURPLN=X", 1), ".L": ("EURGBP=X", 100), ".BD": ("EURHUF=X", 1)}
+      ".WA": ("EURPLN=X", 1), ".CO": ("EURDKK=X", 1), ".PR": ("EURCZK=X", 1), ".L": ("EURGBP=X", 100), ".BD": ("EURHUF=X", 1)}
 
 PERIOD = "10y"
 GARCH_YEARS = 5
