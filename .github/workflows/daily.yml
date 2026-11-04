@@ -1,31 +1,26 @@
-name: Daily price update
-
+name: Thesis analysis
 on:
   schedule:
-    - cron: "*/30 7-16 * * 1-5"   # every 30 min while European markets are open (UTC)
-    - cron: "45 16 * * 1-5"       # 16:45 UTC = 17:45 Vienna (winter), final closing prices
-  workflow_dispatch: {}            # lets you run it by hand from the Actions tab
-
+    - cron: "30 5 * * 6"
+  workflow_dispatch:
 permissions:
   contents: write
-
 concurrency:
-  group: price-update              # never run two updates at the same time
-  cancel-in-progress: false
-
+  group: thesis-analysis
 jobs:
-  update:
+  run:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install yfinance pandas
-      - run: python fetch_prices.py
-      - name: Save the new prices
+      - run: pip install yfinance pandas numpy statsmodels arch lxml
+      - run: python analysis.py
+      - name: Commit results
         run: |
-          git config user.name "price-bot"
-          git config user.email "price-bot@users.noreply.github.com"
-          git add data/benchmark_prices.json data/news.json
-          git diff --cached --quiet || (git commit -m "Price update" && git pull --rebase && git push)
+          git config user.name "thesis-bot"
+          git config user.email "thesis-bot@users.noreply.github.com"
+          git add data/thesis_results.json data/panel.csv data/fundamentals.json
+          git diff --cached --quiet || (git commit -m "Thesis analysis update" && git pull --rebase && git push)
