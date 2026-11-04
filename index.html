@@ -78,6 +78,14 @@ details{margin-top:10px}summary{cursor:pointer;font-weight:600;font-size:13px}
 #ctable td:nth-child(2){min-width:120px}
 footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:var(--grey)}
 @media(max-width:820px){.two{grid-template-columns:1fr}h1{font-size:21px}.chart{height:280px}}
+.pick{display:flex;flex-wrap:wrap;gap:8px}
+.pick label{display:flex;align-items:center;gap:6px;background:var(--grey-l);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+.pick label.ex{border:1px dashed var(--red)}
+.lnk a{color:var(--red);font-weight:600;text-decoration:none}.lnk a:hover{text-decoration:underline}
+.lnk{display:block;margin:3px 0;text-align:left}
+.item{border-top:1px solid #eee;padding:10px 0}.item:first-child{border-top:0}
+.item b{display:block}.item .small{display:block}
+#srcT td,#callT td{text-align:left;vertical-align:top}
 </style>
 </head>
 <body>
@@ -91,6 +99,8 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     <button data-t="market">Market &amp; risk</button>
     <button data-t="thesis">Thesis test</button>
     <button data-t="country">Country view</button>
+    <button data-t="sources">Sources</button>
+    <button data-t="strategy">Strategy &amp; news</button>
     <button data-t="method">Method &amp; sources</button>
   </nav>
 </div></header>
@@ -141,6 +151,13 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     </details>
   </div>
   <div class="card" style="margin-top:14px">
+    <h2>Choose companies and tickers</h2>
+    <p class="note">Tick the companies to show in the table and charts below. Your own tickers come from <code>tickers.csv</code> in your GitHub repo: any Yahoo Finance symbol works (for example <code>NOKIA.HE</code>, <code>VOD.L</code>, <code>AAPL</code>). Prices for new tickers appear after the next update.</p>
+    <div id="pick" class="pick"></div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" id="addTk">Add or remove tickers (opens GitHub)</button><button class="btn ghost" id="runNow">Update now (opens GitHub Actions)</button></div>
+    <p class="small">Steps: click "Add or remove tickers", add one line such as <code>NOKIA,NOKIA.HE,Nokia,Finland</code>, press Commit changes, then "Update now" and Run workflow. Wait about 2 minutes and refresh this page.</p>
+  </div>
+  <div class="card" style="margin-top:14px">
     <h2>Market risk table</h2>
     <p class="note" id="mktNote"></p>
     <div class="scroll"><table id="mkt"></table></div>
@@ -148,6 +165,40 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
   <div class="grid two" style="margin-top:14px">
     <div class="card"><h2>Price, rebased to 100</h2><div class="chart"><canvas id="pxChart"></canvas></div></div>
     <div class="card"><h2>Rolling 30-day volatility (annualised)</h2><div class="chart"><canvas id="volChart"></canvas></div></div>
+  </div>
+</section>
+
+<!-- SOURCES -->
+<section class="tab" id="sources">
+  <div class="card">
+    <h2>Where the numbers come from</h2>
+    <p class="note" id="srcNote">Loading…</p>
+    <div class="scroll"><table id="srcT"></table></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>Add or fix links</h2>
+    <p class="small">The curated links live in <code>data/sources.json</code> in your repo. Click the button, edit the file, commit, and refresh this page. The Yahoo and search links are built automatically from each ticker.</p>
+    <div class="row"><button class="btn ghost" id="editSrc">Edit sources.json (opens GitHub)</button></div>
+  </div>
+</section>
+
+<!-- STRATEGY -->
+<section class="tab" id="strategy">
+  <div class="card">
+    <h2>Strategic investments</h2>
+    <p class="note">What each operator says it will invest in, with the link to the news or document. Dates are when the item was published.</p>
+    <div class="row"><label for="stSel">Company</label><select id="stSel"></select></div>
+    <div id="stList"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>Earnings calls</h2>
+    <p class="note">Transcripts, webcasts and presentations. A search link is generated for every company, so you can always find the latest call.</p>
+    <div class="scroll"><table id="callT"></table></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>Latest headlines</h2>
+    <p class="note" id="newsNote">Headlines refresh with the daily price job (Yahoo Finance news for each ticker).</p>
+    <div id="newsList"></div>
   </div>
 </section>
 
@@ -269,6 +320,7 @@ const COUNTRIES={
 };
 
 /* ---------- STATE ---------- */
+var EXTRAS=[];var hidden=new Set();try{(JSON.parse(localStorage.getItem('hid')||'[]')).forEach(x=>hidden.add(x))}catch(e){}
 let prices={};      // id -> [{d:'YYYY-MM-DD', c:number}] ascending
 let isLive=false;
 let charts={};
@@ -344,7 +396,7 @@ function renderPeers(){
 /* ---------- MARKET ---------- */
 function stats(){
   const bret=prices.BM?logret(prices.BM):null;const out={};
-  for(const p of PEERS){const a=prices[p.id];if(!a||a.length<30){out[p.id]=null;continue}
+  for(const p of [...PEERS,...EXTRAS]){const a=prices[p.id];if(!a||a.length<30){out[p.id]=null;continue}
     const r=logret(a);out[p.id]={last:a[a.length-1].c,d1:retOver(a,1),m1:retOver(a,21),m3:retOver(a,63),ytd:ytd(a),y1:retOver(a,Math.min(252,a.length-1)),vol:annVol(r.map(x=>x.r)),beta:bret?beta(r,bret):null,dd:maxDD(a),n:a.length,roll:rollVol(r)}}
   return out;
 }
@@ -353,11 +405,11 @@ const sgn=v=>v==null?'n/a':(v>=0?'+':'')+fmt(v)+'%';
 function renderMarket(){
   const S=stats();window.__S=S;
   let h='<tr><th>Company</th><th>Symbol</th><th>Last</th><th>1M</th><th>3M</th><th>YTD</th><th>1Y</th><th>Volatility</th><th id="betaH">Beta vs benchmark</th><th>Max drawdown</th><th>Days</th></tr>';
-  for(const p of PEERS){const s=S[p.id];
+  for(const p of [...PEERS,...EXTRAS].filter(p=>!hidden.has(p.id))){const s=S[p.id];
     h+=`<tr class="${p.id==='A1'?'a1':''}"><td>${p.name}</td><td>${feedInfo&&isLive?(feedInfo.tickers[p.id]||'n/a'):symbols[p.id]}</td>`+(s?`<td>${fmt(s.last,2)}</td><td class="${cc(s.m1)}">${sgn(s.m1)}</td><td class="${cc(s.m3)}">${sgn(s.m3)}</td><td class="${cc(s.ytd)}">${sgn(s.ytd)}</td><td class="${cc(s.y1)}">${sgn(s.y1)}</td><td>${fmt(s.vol)}%</td><td>${fmt(s.beta,2)}</td><td class="neg">${fmt(s.dd)}%</td><td>${s.n}</td>`:`<td colspan="9" class="small" style="text-align:center">no data</td>`)+'</tr>';}
   $('#mkt').innerHTML=h;
   $('#mktNote').textContent=isLive?(feedInfo?'Daily closes from Yahoo Finance in each stock\'s own currency. Window = about one year.':'Twelve Data closes for US-listed ADRs in USD. Window = bars returned.'):'SAMPLE data: simulated prices for layout only. Do not quote these numbers.';
-  const have=PEERS.filter(p=>S[p.id]);
+  const have=[...PEERS,...EXTRAS].filter(p=>S[p.id]&&!hidden.has(p.id));
   const idx=have.map(p=>{const a=prices[p.id];return{p,pts:a.map(x=>({x:x.d,y:x.c/a[0].c*100}))}});
   const ds=idx.map(({p,pts})=>({label:p.short,data:pts,borderColor:p.id==='A1'?RED:shade(p.id),borderWidth:p.id==='A1'?3:1.3,pointRadius:0,tension:.15}));
   if(prices.BM){const a=prices.BM;ds.push({label:benchName,data:a.map(x=>({x:x.d,y:x.c/a[0].c*100})),borderColor:INK,borderDash:[5,4],borderWidth:1.6,pointRadius:0})}
@@ -367,7 +419,8 @@ function renderMarket(){
   drawChart('vol','volChart',{type:'line',data:{labels:null,datasets:vds},options:opt()},have.length?S[have[0].id].roll.map(x=>x.d):[]);
 }
 const GREYS=['#6B6B6B','#8C8C8C','#A3A3A3','#4D4D4D','#C2C2C2','#7A7A7A','#999','#B5B5B5','#5E5E5E'];
-function shade(id){return GREYS[PEERS.findIndex(p=>p.id===id)%GREYS.length]}
+const XC=['#C0392B','#E67E22','#8E44AD','#2C7FB8','#16A085','#B7950B'];
+function shade(id){const i=PEERS.findIndex(p=>p.id===id);if(i>=0)return GREYS[i%GREYS.length];const j=EXTRAS.findIndex(p=>p.id===id);return XC[Math.max(j,0)%XC.length]}
 function drawChart(key,canvas,cfg,labels){if(labels)cfg.data.labels=labels;if(charts[key])charts[key].destroy();charts[key]=new Chart($('#'+canvas),cfg)}
 
 /* ---------- THESIS ---------- */
@@ -464,11 +517,12 @@ async function loadFeed(){
       const arr=j.prices&&j.prices[id];
       if(arr&&arr.length>30){got[id]=arr.map(x=>({d:x[0],c:x[1]}));n++}else if(id!=='BM')failed.push((PEERS.find(p=>p.id===id)||{}).short||id)
     }
+    EXTRAS=[];for(const id of Object.keys(j.extra||{})){const arr=j.prices&&j.prices[id];if(arr&&arr.length>30){got[id]=arr.map(x=>({d:x[0],c:x[1]}));EXTRAS.push({id,name:j.extra[id].name,short:j.extra[id].name,cty:j.extra[id].country,ticker:j.extra[id].ticker})}}
     if(n<2)throw new Error('feed has no usable series');
     prices=got;isLive=true;
     feedInfo={updated:(j.updated||'').slice(0,16).replace('T',' ')+' UTC',tickers:j.tickers||{},n:n,total:PEERS.length+1,failed:failed};
     benchName=j.benchmark_name||'STOXX Europe 600';
-    setBanner();renderAll();
+    setBanner();renderPick();renderAll();renderSources();renderStrategy();
   }catch(e){/* keep sample data; banner already says so */}
 }
 loadFeed();
@@ -528,6 +582,60 @@ async function loadThesis(){
   renderThesisFull();
 }
 loadThesis();
+
+/* ---------- CHOOSE TICKERS, SOURCES, STRATEGY, NEWS ---------- */
+function repoInfo(){const h=location.hostname,p=location.pathname.split('/').filter(Boolean);return h.endsWith('github.io')?{user:h.split('.')[0],repo:p[0]||''}:{user:'YOUR-USER',repo:'YOUR-REPO'}}
+function ghUrl(path){const r=repoInfo();return `https://github.com/${r.user}/${r.repo}/${path}`}
+function allCos(){return [...PEERS.map(p=>({id:p.id,name:p.name,ticker:(feedInfo&&feedInfo.tickers[p.id])||p.adr,cty:p.cty})),...EXTRAS.map(p=>({id:p.id,name:p.name,ticker:p.ticker,cty:p.cty,ex:1}))]}
+function renderPick(){
+  $('#pick').innerHTML=allCos().map(c=>`<label class="${c.ex?'ex':''}"><input type="checkbox" data-id="${c.id}" ${hidden.has(c.id)?'':'checked'}>${c.name} <span class="small">${c.ticker||''}</span></label>`).join('');
+}
+$('#pick').addEventListener('change',e=>{const id=e.target.dataset.id;if(!id)return;e.target.checked?hidden.delete(id):hidden.add(id);try{localStorage.setItem('hid',JSON.stringify([...hidden]))}catch(x){}renderMarket()});
+$('#addTk').onclick=()=>window.open(ghUrl('edit/main/tickers.csv'),'_blank');
+$('#runNow').onclick=()=>window.open(ghUrl('actions/workflows/daily.yml'),'_blank');
+$('#editSrc').onclick=()=>window.open(ghUrl('edit/main/data/sources.json'),'_blank');
+var SRC=null,NEWS=null;
+const enc=encodeURIComponent;
+function renderSources(){
+  const note=$('#srcNote'),t=$('#srcT');
+  note.textContent=SRC?`Curated links collected ${SRC.asof}. ${SRC.note}`:'Curated links file (data/sources.json) not found. The automatic links below still work.';
+  let h='<tr><th>Company</th><th>Annual and quarterly reports</th><th>Earnings calls</th><th>Auto links (Yahoo Finance, search)</th></tr>';
+  for(const c of allCos()){
+    const s=SRC&&SRC.companies&&SRC.companies[c.id]||{reports:[],calls:[]};
+    const L=a=>a.length?a.map(x=>`<span class="lnk"><a href="${x.u}" target="_blank" rel="noopener">${x.t}</a></span>`).join(''):'<span class="small">none curated yet</span>';
+    const tk=enc(c.ticker||'');
+    h+=`<tr class="${c.id==='A1'?'a1':''}"><td><b>${c.name}</b><br><span class="small">${c.ticker||''}</span></td><td>${L(s.reports)}</td><td>${L(s.calls)}</td><td><span class="lnk"><a href="https://finance.yahoo.com/quote/${tk}/financials" target="_blank" rel="noopener">Financial statements</a></span><span class="lnk"><a href="https://finance.yahoo.com/quote/${tk}/analysis" target="_blank" rel="noopener">Analyst estimates</a></span><span class="lnk"><a href="https://www.google.com/search?q=${enc(c.name+' annual report 2025 investor relations')}" target="_blank" rel="noopener">Search annual report</a></span><span class="lnk"><a href="https://www.google.com/search?q=${enc(c.name+' earnings call transcript')}" target="_blank" rel="noopener">Search earnings call</a></span></td></tr>`;
+  }
+  t.innerHTML=h;
+}
+function renderStrategy(){
+  const sel=$('#stSel');const cur=sel.value;
+  sel.innerHTML='<option value="">All companies</option>'+allCos().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');sel.value=cur;
+  const nm={};allCos().forEach(c=>nm[c.id]=c.name);
+  const items=((SRC&&SRC.strategy)||[]).filter(x=>!sel.value||x.id===sel.value);
+  $('#stList').innerHTML=items.length?items.map(x=>`<div class="item"><b>${nm[x.id]||x.id}: ${x.title}</b><span class="small">${x.date} · ${x.detail}</span><span class="lnk"><a href="${x.u}" target="_blank" rel="noopener">Read: ${x.src}</a></span></div>`).join(''):'<p class="small">No items for this company yet. Add them in <code>data/sources.json</code> under "strategy".</p>';
+  let h='<tr><th>Company</th><th>Calls and presentations</th><th>Find more</th></tr>';
+  for(const c of allCos().filter(c=>!sel.value||c.id===sel.value)){
+    const s=SRC&&SRC.companies&&SRC.companies[c.id]||{calls:[]};
+    h+=`<tr><td><b>${c.name}</b></td><td>${s.calls.length?s.calls.map(x=>`<span class="lnk"><a href="${x.u}" target="_blank" rel="noopener">${x.t}</a></span>`).join(''):'<span class="small">none curated yet</span>'}</td><td><span class="lnk"><a href="https://www.google.com/search?q=${enc(c.name+' earnings call transcript 2026')}" target="_blank" rel="noopener">Search latest call</a></span><span class="lnk"><a href="https://www.google.com/search?q=${enc(c.name+' capital markets day strategy investment plan')}" target="_blank" rel="noopener">Search strategy and investment plans</a></span></td></tr>`;
+  }
+  $('#callT').innerHTML=h;
+  const nl=$('#newsList');
+  if(!NEWS){nl.innerHTML='<p class="small">News file not found yet. It is created by the next daily price job.</p>';return}
+  $('#newsNote').textContent='Yahoo Finance headlines, updated '+(NEWS.updated||'').slice(0,16).replace('T',' ')+' UTC.';
+  let any=false,o='';
+  for(const c of allCos().filter(c=>!sel.value||c.id===sel.value)){
+    const a=(NEWS.news&&NEWS.news[c.id])||[];if(!a.length)continue;any=true;
+    o+=`<div class="item"><b>${c.name}</b>`+a.slice(0,5).map(n=>`<span class="lnk"><a href="${n.link}" target="_blank" rel="noopener">${n.title}</a> <span class="small">${n.publisher||''} ${typeof n.time==='string'?n.time.slice(0,10):''}</span></span>`).join('')+'</div>';
+  }
+  nl.innerHTML=any?o:'<p class="small">Yahoo returned no headlines for these tickers.</p>';
+}
+$('#stSel').onchange=renderStrategy;
+(async()=>{
+  try{const r=await fetch('data/sources.json?'+Date.now(),{cache:'no-store'});if(r.ok)SRC=await r.json()}catch(e){}
+  try{const r=await fetch('data/news.json?'+Date.now(),{cache:'no-store'});if(r.ok)NEWS=await r.json()}catch(e){}
+  renderPick();renderSources();renderStrategy();
+})();
 </script>
 </body>
 </html>
