@@ -27,5 +27,5 @@ jobs:
         run: |
           git config user.name "price-bot"
           git config user.email "price-bot@users.noreply.github.com"
-          git add data/benchmark_prices.json
+          git add data/benchmark_prices.json data/news.json
           git diff --cached --quiet || (git commit -m "Price update" && git pull --rebase && git push)
