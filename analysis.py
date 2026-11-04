@@ -378,6 +378,228 @@ def main():
             print("FAIL fx", fxs, e, file=sys.stderr)
 
     panel = build_panel(prices, fundamentals, fx_rates, bench)
+    # multi-year financials for the website's Trends tab
+    def _c(v):
+        try:
+            v = float(v)
+            return None if v != v else round(v, 4)
+        except Exception:
+            return None
+    trend = {}
+    for cid, f in fundamentals.items():
+        g = f["rev"].pct_change() * 100
+        rows = []
+        for idx, r in f.iterrows():
+            ebit = r["ebit"] if "ebit" in f.columns else None
+            rows.append({"fy": int(idx.year), "rev": _c(r["rev"]), "ebit": _c(ebit), "ebitda": _c(r["ebitda"]),
+                         "capex": _c(r["capex"]), "nd": _c(r["nd"]), "ebitda_m": _c(r["ebitda_m"]),
+                         "capex_s": _c(r["capex_s"]), "lev": _c(r["lev"]),
+                         "ebit_m": _c(ebit / r["rev"] * 100) if _c(ebit) is not None and r["rev"] else None,
+                         "growth": _c(g.loc[idx])})
+        trend[cid] = rows
+    with open(f"{OUT}/fundamentals.json", "w") as _f:
+        json.dump({"updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                   "names": {c: UNIVERSE[c][1] for c in trend}, "data": trend}, _f, separators=(",", ":"))
+    if panel.empty:
+        return panel
+    panel = panel.sort_values(["company", "year"]).reset_index(drop=True)
+    for c in ("ebitda_m", "capex_s", "lev"):
+        panel[c + "_lag"] = panel.groupby("company")[c].shift(1)
+        # lag only valid if the previous row is exactly one year earlier
+        prev_year = panel.groupby("company")["year"].shift(1)
+        panel.loc[panel["year"] - prev_year != 1, c + "_lag"] = np.nan
+    return panel
+
+
+def usable(panel):
+    p = panel.dropna(subset=["vol", "ebitda_m", "capex_s", "lev"]).copy()
+    p = p[(p["rev"] > 0) & (p["ebitda_m"] > 0) & (p["ebitda_m"] < 80) & (p["lev"] > -2) & (p["lev"] < 15)]
+    return p
+
+
+def fit(df, y, xs, year_fe, comp_fe, extra=None, label=""):
+    xs = list(xs) + (extra or [])
+    d = df.dropna(subset=[y] + xs).copy()
+    if len(d) < 12 or d["company"].nunique() < 4:
+        return {"label": label, "ok": False, "reason": f"too few observations ({len(d)})"}
+    formula = f"{y} ~ " + " + ".join(xs)
+    if year_fe:
+        formula += " + C(year)"
+    if comp_fe:
+        formula += " + C(company)"
+    try:
+        groups = pd.factorize(d["company"])[0]
+        m = smf.ols(formula, data=d).fit(cov_type="cluster", cov_kwds={"groups": groups})
+    except Exception as e:
+        return {"label": label, "ok": False, "reason": str(e)[:120]}
+    coefs = {}
+    for x in xs:
+        coefs[x] = {"b": float(m.params[x]), "se": float(m.bse[x]),
+                    "t": float(m.tvalues[x]), "p": float(m.pvalues[x])}
+    return {"label": label, "ok": True, "n": int(len(d)), "companies": int(d["company"].nunique()),
+            "r2": float(m.rsquared), "coefs": coefs,
+            "year_fe": bool(year_fe), "company_fe": bool(comp_fe)}
+
+
+def regressions(panel):
+    p = usable(panel)
+    X = ["ebitda_m", "capex_s", "lev"]
+    models = [
+        fit(p, "vol", X, False, False, label="M1 Pooled"),
+        fit(p, "vol", X, True, False, label="M2 + year effects"),
+        fit(p, "vol", X, True, True, label="M3 + company and year effects"),
+        fit(p, "vol", X, True, True, extra=["beta"], label="M4 = M3 + market beta"),
+    ]
+    rob = [
+        fit(p, "vol_tr", X, True, True, label="Total return (dividends included)"),
+        fit(p, "vol_eur", X, True, True, label="EUR-converted returns"),
+        fit(p, "vol", [x + "_lag" for x in X], True, True, label="Lagged fundamentals (t-1)"),
+        fit(p[p["company"] != "A1"], "vol", X, True, True, label="Without A1"),
+        fit(p[p["year"] <= 2022], "vol", X, True, False, label="Years up to 2022"),
+        fit(p[p["year"] >= 2023], "vol", X, True, False, label="Years from 2023"),
+    ]
+    return models, rob, p
+
+
+# ----------------------------------------------------------------------------- GARCH
+def garch_all(prices):
+    out, series = [], {}
+    for cid, px in prices.items():
+        r = logret(px["close"]) * 100
+        r = r[r.index >= r.index[-1] - pd.Timedelta(days=365 * GARCH_YEARS)]
+        if len(r) < 500:
+            continue
+        try:
+            res = arch_model(r, mean="Constant", vol="GARCH", p=1, q=1, dist="normal").fit(disp="off")
+            om, al, be = (float(res.params["omega"]), float(res.params["alpha[1]"]), float(res.params["beta[1]"]))
+            pers = al + be
+            lr = float(np.sqrt(om / (1 - pers)) * np.sqrt(252)) if pers < 1 else None
+            cv = res.conditional_volatility * np.sqrt(252)
+            out.append({"id": cid, "n": int(len(r)), "omega": om, "alpha": al, "beta": be,
+                        "persistence": float(pers), "long_run_vol": lr,
+                        "last_cond_vol": float(cv.iloc[-1]), "loglik": float(res.loglikelihood)})
+            tail = cv.iloc[-252:]
+            series[cid] = [[d.strftime("%Y-%m-%d"), round(float(v), 2)] for d, v in tail.items()]
+        except Exception as e:
+            print("GARCH FAIL", cid, str(e)[:80], file=sys.stderr)
+    return out, series
+
+
+# ----------------------------------------------------------------------------- events
+def read_events(prices):
+    ev = []
+    if os.path.exists("events.csv"):
+        df = pd.read_csv("events.csv", comment="#")
+        for _, r in df.iterrows():
+            try:
+                ev.append((str(r["id"]).strip(), pd.Timestamp(r["date"]), str(r["label"]).strip()))
+            except Exception:
+                pass
+    # earnings dates from Yahoo where available (best effort)
+    for cid in prices:
+        try:
+            e = yf.Ticker(UNIVERSE[cid][0]).get_earnings_dates(limit=40)
+            if e is not None and len(e):
+                for d in e.index:
+                    d = pd.Timestamp(d).tz_localize(None) if getattr(d, "tzinfo", None) else pd.Timestamp(d)
+                    if d <= pd.Timestamp.today():
+                        ev.append((cid, d.normalize(), "Earnings"))
+        except Exception:
+            pass
+    return ev
+
+
+def event_study(prices, bench, events):
+    mret = logret(bench["adj"])
+    res = []
+    for cid, date, label in events:
+        if cid not in prices:
+            continue
+        r = logret(prices[cid]["adj"])
+        j = pd.concat([r.rename("r"), mret.rename("m")], axis=1, join="inner").dropna()
+        pos = j.index.searchsorted(date)                 # event day = first trading day on/after date
+        if pos >= len(j) or pos < EST_WINDOW + EST_GAP + 5:
+            continue
+        est = j.iloc[pos - EST_GAP - EST_WINDOW: pos - EST_GAP]
+        if len(est) < 100:
+            continue
+        X = np.column_stack([np.ones(len(est)), est["m"].values])
+        coef, *_ = np.linalg.lstsq(X, est["r"].values, rcond=None)
+        resid = est["r"].values - X @ coef
+        sig = float(resid.std(ddof=2))
+        def car(a, b):
+            w = j.iloc[pos + a: pos + b + 1]
+            if len(w) != (b - a + 1):
+                return None, None
+            ar = w["r"].values - (coef[0] + coef[1] * w["m"].values)
+            c = float(ar.sum()); t = c / (sig * np.sqrt(len(w)))
+            return c * 100, float(t)
+        c1, t1 = car(-1, 1)
+        c5, t5 = car(-5, 5)
+        if c1 is None:
+            continue
+        res.append({"id": cid, "date": date.strftime("%Y-%m-%d"), "label": label,
+                    "car_1_1": c1, "t_1_1": t1, "car_5_5": c5, "t_5_5": t5})
+    # aggregate by label
+    agg = []
+    df = pd.DataFrame(res)
+    if len(df):
+        df["grp"] = np.where(df["label"] == "Earnings", "Earnings", "Other events")
+        for g, d in df.groupby("grp"):
+            for col, lab in (("car_1_1", "[-1,+1]"), ("car_5_5", "[-5,+5]")):
+                v = d[col].dropna()
+                if len(v) >= 2:
+                    se = v.std(ddof=1) / np.sqrt(len(v))
+                    agg.append({"group": g, "window": lab, "n": int(len(v)), "mean_car": float(v.mean()),
+                                "t": float(v.mean() / se) if se > 0 else None})
+    return res, agg
+
+
+# ----------------------------------------------------------------------------- main
+def main():
+    os.makedirs(OUT, exist_ok=True)
+    failed = []
+    print("Downloading benchmark", BENCH_TICKER)
+    bench = get_prices(BENCH_TICKER)
+    prices, fundamentals = {}, {}
+    for cid, (tk, name, cty) in UNIVERSE.items():
+        try:
+            prices[cid] = get_prices(tk)
+            print("OK  prices", cid, tk, len(prices[cid]))
+        except Exception as e:
+            failed.append(f"{cid}:{tk} prices ({str(e)[:40]})"); print("FAIL prices", cid, tk, e, file=sys.stderr); continue
+        try:
+            fundamentals[cid] = get_fundamentals(tk)
+            print("OK  fundamentals", cid, len(fundamentals[cid]), "years")
+        except Exception as e:
+            failed.append(f"{cid}:{tk} fundamentals ({str(e)[:40]})"); print("FAIL fundamentals", cid, e, file=sys.stderr)
+    if len(prices) < 5:
+        print("Too few companies, keeping old files.", file=sys.stderr); sys.exit(1)
+
+    fx_rates = {}
+    for fxs in sorted({v[0] for v in FX.values()}):
+        try:
+            h = clean_index(yf.Ticker(fxs).history(period=PERIOD, interval="1d"))
+            fx_rates[fxs] = h["Close"].astype(float).dropna()
+        except Exception as e:
+            print("FAIL fx", fxs, e, file=sys.stderr)
+
+    panel = build_panel(prices, fundamentals, fx_rates, bench)
+    # multi-year financials for the website's Trends tab
+    trend = {}
+    for cid, f in fundamentals.items():
+        g = f["rev"].pct_change() * 100
+        trend[cid] = [{"fy": int(idx.year), "rev": r.rev, "ebit": r.get("ebit"), "ebitda": r.ebitda, "capex": r.capex,
+                       "nd": r.nd, "ebitda_m": r.ebitda_m, "capex_s": r.capex_s, "lev": r.lev,
+                       "ebit_m": (r.get("ebit") / r.rev * 100) if r.rev and r.get("ebit") == r.get("ebit") else None,
+                       "growth": g.loc[idx]} for idx, r in f.iterrows()]
+    with open(f"{OUT}/fundamentals.json", "w") as _f:
+        json.dump({"updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                   "names": {c: UNIVERSE[c][1] for c in trend}, "data": trend},
+                  _f, separators=(",", ":"), default=lambda o: None, allow_nan=False) if False else _f.write(
+            json.dumps({"updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "names": {c: UNIVERSE[c][1] for c in trend}, "data": trend},
+                       separators=(",", ":"), default=lambda o: None).replace("NaN", "null"))
     if panel.empty:
         models, rob, used = [], [], panel
     else:
