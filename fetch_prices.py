@@ -1,7 +1,7 @@
 """Daily price download for the A1 benchmark site.
 Runs on GitHub Actions every weekday evening and writes data/benchmark_prices.json.
 To change which companies are tracked, edit TICKERS below (id must match the website)."""
-import json, datetime, sys, time, os
+import json, datetime, sys, time, os, csv
 import yfinance as yf
 
 TICKERS = {
@@ -16,6 +16,17 @@ TICKERS = {
     "TEL":   "TEL.OL",    # Telenor
 }
 BENCHMARK = ("BM", "^STOXX", "STOXX Europe 600")
+
+# Your own extra tickers: edit tickers.csv (id,ticker,name,country). Any Yahoo Finance symbol works.
+EXTRA = {}
+try:
+    with open("tickers.csv", newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            i, t = (r.get("id") or "").strip(), (r.get("ticker") or "").strip()
+            if i and t and i not in TICKERS and i != "BM":
+                EXTRA[i] = {"ticker": t, "name": (r.get("name") or i).strip(), "country": (r.get("country") or "").strip()}
+except FileNotFoundError:
+    pass
 
 # Symbols we are not sure Yahoo has. They are only tried and reported in the job log
 # (not saved to the website), so you can see which spelling works.
@@ -44,7 +55,7 @@ def get(ticker):
 
 def main():
     prices, used, failed = {}, {}, []
-    jobs = list(TICKERS.items()) + [(BENCHMARK[0], BENCHMARK[1])]
+    jobs = list(TICKERS.items()) + [(i, e["ticker"]) for i, e in EXTRA.items()] + [(BENCHMARK[0], BENCHMARK[1])]
     for sid, tk in jobs:
         try:
             prices[sid] = get(tk); used[sid] = tk
@@ -58,6 +69,25 @@ def main():
             rows = get(tk); print("PROBE OK  ", tk, len(rows), "rows, last", rows[-1])
         except Exception as e:
             print("PROBE FAIL", tk, e)
+    news = {}
+    for sid, tk in used.items():                  # latest headlines per stock (best effort)
+        if sid == "BM": continue
+        try:
+            items = []
+            for n in (yf.Ticker(tk).news or [])[:8]:
+                c = n.get("content", n)
+                link = ((c.get("canonicalUrl") or c.get("clickThroughUrl") or {}).get("url")) or c.get("link")
+                title = c.get("title")
+                if title and link:
+                    items.append({"title": title, "link": link,
+                                  "publisher": (c.get("provider") or {}).get("displayName") or c.get("publisher") or "",
+                                  "time": c.get("pubDate") or c.get("providerPublishTime") or ""})
+            news[sid] = items
+        except Exception as e:
+            print("news fail", sid, e)
+    os.makedirs("data", exist_ok=True)
+    with open("data/news.json", "w") as f:
+        json.dump({"updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "news": news}, f)
     if len(prices) < 3:
         print("Too few series downloaded, keeping the old file.", file=sys.stderr)
         sys.exit(1)           # job turns red, old data/prices.json stays
@@ -67,6 +97,7 @@ def main():
         "benchmark_name": BENCHMARK[2],
         "tickers": used,
         "failed": failed,
+        "extra": {i: {"name": e["name"], "country": e["country"], "ticker": e["ticker"]} for i, e in EXTRA.items() if i in prices},
         "prices": prices,
     }
     os.makedirs("data", exist_ok=True)
