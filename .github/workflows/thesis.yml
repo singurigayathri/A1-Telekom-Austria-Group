@@ -1,0 +1,26 @@
+name: Thesis analysis
+on:
+  schedule:
+    - cron: "30 5 * * 6"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: thesis-analysis
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy statsmodels arch lxml
+      - run: python analysis.py
+      - name: Commit results
+        run: |
+          git config user.name "thesis-bot"
+          git config user.email "thesis-bot@users.noreply.github.com"
+          git add data/thesis_results.json data/panel.csv
+          git diff --cached --quiet || (git commit -m "Thesis analysis update" && git pull --rebase && git push)
