@@ -96,6 +96,7 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
   <nav id="nav">
     <button class="on" data-t="overview">Overview</button>
     <button data-t="peers">Peer ranking</button>
+    <button data-t="trends">Trends</button>
     <button data-t="market">Market &amp; risk</button>
     <button data-t="thesis">Thesis test</button>
     <button data-t="country">Country view</button>
@@ -130,6 +131,22 @@ footer{max-width:1240px;margin:0 auto;padding:0 16px 40px;font-size:12px;color:v
     <h2>Underlying figures (local currency, millions)</h2>
     <p class="note">EBITDA is derived as EBIT + depreciation &amp; amortisation, so it is not the company's adjusted EBITDA.</p>
     <div class="scroll"><table id="raw"></table></div>
+  </div>
+</section>
+
+<!-- TRENDS -->
+<section class="tab" id="trends">
+  <div class="card">
+    <h2>Financials over the past years</h2>
+    <p class="note" id="trNote">Loading…</p>
+    <div class="row"><label for="trSel">Metric</label><select id="trSel"></select></div>
+    <div class="chart"><canvas id="trChart"></canvas></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" onclick="downloadPNG('tr','financial_trend.png')">Download chart (PNG)</button><button class="btn ghost" id="trCsv">Download table (CSV)</button></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>Table by year</h2>
+    <div class="scroll"><table id="trT"></table></div>
+    <p class="small">Source: Yahoo Finance annual statements, refreshed weekly. EBITDA = EBIT + D&amp;A. Fiscal year = calendar year in which the fiscal year ends. These can differ slightly from the FY2025 figures on the Overview tab, which come from company reports. Yahoo usually gives only about 4 years.</p>
   </div>
 </section>
 
@@ -494,7 +511,7 @@ function setBanner(){const b=$('#banner');
   else{b.className='banner';b.innerHTML='Showing <b>SAMPLE price data</b> (simulated, not real). The daily price file was not found yet: run the GitHub job once (see the setup steps). Financials are real FY2025 figures.'}
   const fn=$('#feedNote');if(fn)fn.textContent=feedInfo&&isLive?`Daily update of ${feedInfo.updated}. ${feedInfo.n} of ${feedInfo.total} series loaded${feedInfo.failed.length?'. Not available: '+feedInfo.failed.join(', '):''}.`:'No daily file found yet, so sample data is shown.';
   const bh=$('#betaH');if(bh)bh.textContent='Beta vs '+(feedInfo&&isLive?'STOXX 600':'benchmark');}
-function renderAll(){renderOverview();renderPeers();renderMarket();renderThesis();renderCountry();if(thesisRes!==undefined&&document.querySelector('#thesis.on'))renderThesisFull()}
+function renderAll(){renderOverview();renderPeers();renderMarket();renderThesis();renderCountry();if(document.querySelector('#trends.on'))renderTrends();if(thesisRes!==undefined&&document.querySelector('#thesis.on'))renderThesisFull()}
 
 /* ---------- INIT ---------- */
 $('#tk').innerHTML=[...PEERS,BENCH].map(p=>`<div><label>${p.short||p.name}</label><input data-id="${p.id}" value="${symbols[p.id]}"></div>`).join('');
@@ -636,6 +653,28 @@ $('#stSel').onchange=renderStrategy;
   try{const r=await fetch('data/news.json?'+Date.now(),{cache:'no-store'});if(r.ok)NEWS=await r.json()}catch(e){}
   renderPick();renderSources();renderStrategy();
 })();
+
+/* ---------- TRENDS (multi-year financials) ---------- */
+var FUND=null;
+const TRM=[{k:'ebitda_m',l:'EBITDA margin (%)'},{k:'ebit_m',l:'EBIT margin (%)'},{k:'capex_s',l:'Capex / sales (%)'},{k:'lev',l:'Net debt / EBITDA (x)'},{k:'growth',l:'Revenue growth (%)'},{k:'rev',l:'Revenue (local currency, millions)',m:1},{k:'ebitda',l:'EBITDA (local currency, millions)',m:1},{k:'capex',l:'Capex (local currency, millions)',m:1}];
+function renderTrends(){
+  const sel=$('#trSel');if(!sel.options.length)sel.innerHTML=TRM.map(m=>`<option value="${m.k}">${m.l}</option>`).join('');
+  if(!FUND){$('#trNote').innerHTML='Not available yet. Run the <b>Thesis analysis</b> job once (Actions tab, Run workflow). It creates <code>data/fundamentals.json</code> and this tab fills in.';if(charts.tr){charts.tr.destroy();delete charts.tr}$('#trT').innerHTML='';return}
+  $('#trNote').textContent='Several years per company, so you can see whether A1 is improving or falling behind. Updated '+(FUND.updated||'').slice(0,10)+'. A1 is the red line.';
+  const m=TRM.find(x=>x.k===sel.value)||TRM[0];
+  const ids=Object.keys(FUND.data).filter(id=>FUND.data[id].some(r=>r[m.k]!=null));
+  const yrs=[...new Set(ids.flatMap(id=>FUND.data[id].map(r=>r.fy)))].sort();
+  const val=(id,y)=>{const r=FUND.data[id].find(x=>x.fy===y);return r&&r[m.k]!=null?(m.m?r[m.k]/1e6:r[m.k]):null};
+  const g=m.m?0:2;
+  const ds=ids.map((id,i)=>({label:FUND.names[id]||id,data:yrs.map(y=>val(id,y)),borderColor:id==='A1'?RED:(shade(id)||GREY),backgroundColor:id==='A1'?RED:(shade(id)||GREY),borderWidth:id==='A1'?3.5:1.5,pointRadius:id==='A1'?4:2.5,spanGaps:true,tension:.1}));
+  drawChart('tr','trChart',{type:'line',data:{labels:yrs.map(String),datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}},title:{display:true,text:m.l}},scales:{x:{grid:{display:false}},y:{grid:{color:'#eee'}}}}});
+  let h='<tr><th>Company</th>'+yrs.map(y=>`<th>${y}</th>`).join('')+'</tr>';
+  for(const id of ids)h+=`<tr class="${id==='A1'?'a1':''}"><td>${FUND.names[id]||id}</td>`+yrs.map(y=>`<td>${fmt(val(id,y),g)}</td>`).join('')+'</tr>';
+  $('#trT').innerHTML=h;
+  $('#trCsv').onclick=()=>downloadCSV('financial_trend_'+m.k+'.csv',[['company',...yrs],...ids.map(id=>[FUND.names[id]||id,...yrs.map(y=>val(id,y))])]);
+}
+$('#trSel').onchange=renderTrends;
+(async()=>{try{const r=await fetch('data/fundamentals.json?'+Date.now(),{cache:'no-store'});if(r.ok)FUND=await r.json()}catch(e){}renderTrends()})();
 </script>
 </body>
 </html>
