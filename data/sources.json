@@ -1,0 +1,52 @@
+{
+ "asof": "2026-11-04",
+ "note": "Links collected from public web search on this date. Open each one to confirm it is current. Edit this file on GitHub to add or fix links.",
+ "companies": {
+  "A1": {"name":"A1 Telekom Austria","reports":[
+    {"t":"Annual financial report 2025 (PDF)","u":"https://a1.com/wp-content/uploads/sites/6/2026/03/A1-Telekom-Austria-Group-Annual-financial-report-2025.pdf"},
+    {"t":"Investor relations","u":"https://a1.group/investor-relations/"},
+    {"t":"Q4 and FY 2025 results (press release)","u":"https://www.placera.se/pressmeddelanden/a1-telekom-austria-group-q4-and-full-year-2025-results-20260210"},
+    {"t":"Results presentation Q2/H1 2025 (PDF)","u":"https://a1.group/wp-content/uploads/sites/6/2025/07/Results-presentation-Q2-and-H1-2025.pdf"}],
+   "calls":[{"t":"Q3 2025 earnings update (PDF)","u":"https://a1.group/wp-content/uploads/sites/6/2025/10/A1-Group-–-Earnings-Update-Q3-2025.pdf"}]},
+  "DTE": {"name":"Deutsche Telekom","reports":[
+    {"t":"Financial results 2025","u":"https://www.telekom.com/en/investor-relations/publications/financial-results/financial-results-2025"},
+    {"t":"Financial results 2026","u":"https://www.telekom.com/en/investor-relations/publications/financial-results/financial-results-2026"}],
+   "calls":[{"t":"Q3 2025 earnings call transcript (third party)","u":"https://www.newsquantified.com/dtegy/stock-report/deutsche-telekom-ag-sadr-q3-2025-earnings-call-transcript-0fakjx"}]},
+  "ORA": {"name":"Orange","reports":[
+    {"t":"Consolidated results","u":"https://www.orange.com/en/consolidated-results"}],
+   "calls":[{"t":"2025 full-year results event","u":"https://www.orange.com/en/events/2025-full-year-results"},
+            {"t":"Q1 2026 earnings summary (Quartr)","u":"https://quartr.com/events/orange-s-a-ora-q1-2026_oj7VADfv"}]},
+  "TEF": {"name":"Telefónica","reports":[
+    {"t":"Quarterly reports (check the year page)","u":"https://www.telefonica.com/en/shareholders-investors/financial-reports/quarterly-reports/"}],
+   "calls":[]},
+  "KPN": {"name":"KPN","reports":[
+    {"t":"Company overview Aug 2026 (PDF)","u":"https://s202.q4cdn.com/886546970/files/doc_downloads/2026/08/KPN-Company-Overview.pdf"}],
+   "calls":[]},
+  "SCMN": {"name":"Swisscom","reports":[
+    {"t":"Annual report 2025 (financial review)","u":"https://report.swisscom.ch/en/2025/report/management-commentary/financial-review/summary"},
+    {"t":"FY 2025 results analyst presentation (PDF)","u":"https://www.swisscom.ch/content/dam/assets/about/investoren/berichte/documents/2026/swisscom-fy-2025-results-analyst-presentation.pdf"}],
+   "calls":[{"t":"Q3 2025 earnings call transcript (Seeking Alpha)","u":"https://seekingalpha.com/article/4839086-swisscom-ag-scmwy-q3-2025-earnings-call-transcript"}]},
+  "PROX": {"name":"Proximus","reports":[
+    {"t":"Reports and results","u":"https://proximus.com/investors/reports-and-results.html"},
+    {"t":"Capital Markets Day 2026 presentation (PDF)","u":"https://www.proximus.com/dam/jcr:81f76642-7fa0-43ae-a2c2-bd0575e7489c/ProximusCMD-presentation-2026_en_fr_nl.pdf"}],
+   "calls":[]},
+  "TELIA": {"name":"Telia Company","reports":[
+    {"t":"Invitation to Q3 2026 results presentation","u":"https://www.placera.se/pressmeddelanden/telia-company-invitation-to-telia-companys-q3-2026-results-presentation-20261009"}],
+   "calls":[{"t":"Q1 2026 results presentation invitation","u":"https://www.inderes.se/en/releases/invitation-to-telia-companys-q1-2026-results-presentation"}]},
+  "TEL": {"name":"Telenor","reports":[
+    {"t":"Reports and information","u":"https://www.telenor.com/investors/reports-and-information/"},
+    {"t":"Group results Q3 2026","u":"https://telenor.com/investors/reports-and-information/quarterly/telenor-groups-results-for-the-3rd-quarter-2026/"},
+    {"t":"Group results Q2 2026","u":"https://telenor.com/investors/reports-and-information/quarterly/telenor-groups-results-for-the-2nd-quarter-2026/"}],
+   "calls":[]}
+ },
+ "strategy": [
+  {"id":"A1","date":"2026-02","title":"2026 guidance: revenue +2–3%, capex about EUR 750m","detail":"Continued fibre and 5G build in Austria and the CEE markets.","src":"ICT Business","u":"https://www.ictbusiness.biz/business/a-solid-fy-2025-for-a1-group-with-revenue-and-ebitda-growth"},
+  {"id":"DTE","date":"2026-08","title":"Buys Fiberhost and Inea (Poland) for about EUR 1bn","detail":"From Macquarie Asset Management; announced 16 Aug 2026. Article does not say if closed.","src":"Finyear","u":"https://finyear.com/deutsche-telekom-rachete-fiberhost-inea-1-mde-consolidation-fibre-europe-centrale/"},
+  {"id":"DTE","date":"2026-H1","title":"Cash capex EUR 8.4bn in H1 2026 (EUR 7.8bn without spectrum)","detail":"Priorities: German fibre expansion and US wireless modernisation.","src":"TelecomLead","u":"https://telecomlead.com/telecom-services/telecom-capex-2026-25-major-operators-investing-billions-in-5g-fiber-ai-and-data-centers-128280"},
+  {"id":"ORA","date":"2026-H1","title":"EUR 3.2bn invested in H1 2026, capital intensity 15.2%","detail":"Investment up 2.7% year on year.","src":"TelecomLead","u":"https://telecomlead.com/telecom-services/telecom-capex-2026-25-major-operators-investing-billions-in-5g-fiber-ai-and-data-centers-128280"},
+  {"id":"TEF","date":"2026-02","title":"Plans EUR 32bn capex plus opex for 2026–2028","detail":"Cost reduction, restructuring of weak units, sale of Hispanic American operations, fibre and 5G, European consolidation.","src":"DPL News","u":"https://dplnews.com/?p=304207"},
+  {"id":"TEL","date":"2025-11","title":"Capital Markets Day: capex below 13% of sales by 2028–2030","detail":"2.5% organic service revenue growth target; standalone 5G launch in 2026; fibre in Finland and Norway.","src":"TelecomLead","u":"https://telecomlead.com/?p=123437"},
+  {"id":"PROX","date":"2026","title":"Capital Markets Day 2026 presentation","detail":"Company strategy document. Read it for the investment plan.","src":"Proximus","u":"https://www.proximus.com/dam/jcr:81f76642-7fa0-43ae-a2c2-bd0575e7489c/ProximusCMD-presentation-2026_en_fr_nl.pdf"},
+  {"id":"KPN","date":"2023-11","title":"Older: EUR 4.5–5bn network investment plan over three years","detail":"Part of 'Connect, Activate & Grow'. Dated 7 Nov 2023, check for newer plans.","src":"Total Telecom","u":"https://totaltele.com/kpn-outlines-new-e4-5bn-network-investment-plan/"}
+ ]
+}
