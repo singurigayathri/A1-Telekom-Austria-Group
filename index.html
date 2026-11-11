@@ -25,7 +25,7 @@ nav button{background:transparent;border:0;color:#ddd;padding:11px 16px;font:600
 nav button:hover{color:#fff}
 nav button.on{color:#fff;border-bottom-color:var(--red)}
 main{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
-.tab{display:none}.tab.on{display:block}
+.tab{display:none}.tab.on{display:block}.tab.on+.tab.on{margin-top:14px}
 .banner{background:#fff3cd;border:1px solid #f0d98a;color:#6a5200;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:13px}
 .banner.live{background:#e8f5e9;border-color:#b6dfb9;color:#1b5e20}
 .grid{display:grid;gap:14px}
@@ -113,14 +113,11 @@ input[type=range]{accent-color:#d90000;padding:0}
   <nav id="nav">
     <button class="on" data-t="overview">Overview</button>
     <button data-t="why">Why</button>
-    <button data-t="peers">Peer ranking</button>
-    <button data-t="trends">Trends</button>
     <button data-t="market">Market &amp; risk</button>
     <button data-t="thesis">Thesis test</button>
     <button data-t="country">Country view</button>
-    <button data-t="sources">Sources</button>
-    <button data-t="strategy">Strategy &amp; news</button>
-    <button data-t="method">Method &amp; sources</button>
+    <button data-t="strategy">Strategy &amp; sources</button>
+    <button onclick="location.href='story.html'">Story &#9658;</button>
   </nav>
 </div></header>
 
@@ -167,6 +164,15 @@ input[type=range]{accent-color:#d90000;padding:0}
   <div class="card" style="margin-top:14px">
     <h2>Why Austria's margin fell: the evidence</h2>
     <div id="evList"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>What the leaders do differently</h2>
+    <p class="note">From each company's own FY2025 results material. Margins use each company's own definition, so they are not directly comparable with A1's 37.0%.</p>
+    <div class="scroll"><table id="peerWhy"></table></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>So, why? Four findings</h2>
+    <div id="synth"></div>
   </div>
   <div class="card" style="margin-top:14px">
     <h2>What this does not prove yet</h2>
@@ -239,20 +245,6 @@ input[type=range]{accent-color:#d90000;padding:0}
   </div>
 </section>
 
-<!-- SOURCES -->
-<section class="tab" id="sources">
-  <div class="card">
-    <h2>Where the numbers come from</h2>
-    <p class="note" id="srcNote">Loading…</p>
-    <div class="scroll"><table id="srcT"></table></div>
-  </div>
-  <div class="card" style="margin-top:14px">
-    <h2>Add or fix links</h2>
-    <p class="small">The curated links live in <code>data/sources.json</code> in your repo. Click the button, edit the file, commit, and refresh this page. The Yahoo and search links are built automatically from each ticker.</p>
-    <div class="row"><button class="btn ghost" id="editSrc">Edit sources.json (opens GitHub)</button></div>
-  </div>
-</section>
-
 <!-- STRATEGY -->
 <section class="tab" id="strategy">
   <div class="card">
@@ -270,6 +262,20 @@ input[type=range]{accent-color:#d90000;padding:0}
     <h2>Latest headlines</h2>
     <p class="note" id="newsNote">Headlines refresh with the daily price job (Yahoo Finance news for each ticker).</p>
     <div id="newsList"></div>
+  </div>
+</section>
+
+<!-- SOURCES -->
+<section class="tab" id="sources">
+  <div class="card">
+    <h2>Where the numbers come from</h2>
+    <p class="note" id="srcNote">Loading…</p>
+    <div class="scroll"><table id="srcT"></table></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>Add or fix links</h2>
+    <p class="small">The curated links live in <code>data/sources.json</code> in your repo. Click the button, edit the file, commit, and refresh this page. The Yahoo and search links are built automatically from each ticker.</p>
+    <div class="row"><button class="btn ghost" id="editSrc">Edit sources.json (opens GitHub)</button></div>
   </div>
 </section>
 
@@ -380,27 +386,27 @@ const METRICS=[
 ];
 const COUNTRIES={
  'Austria':[
-  {n:'Magenta Telekom',st:'Unlisted subsidiary',own:'Deutsche Telekom',basis:'Country figures in DT annual report (Europe segment)',f:{cur:'EUR',yr:2025,rev:1507,ebitda:555},note:'Source: DT annual report 2025, Europe segment. EBITDA is DT\'s adjusted EBITDA AL (after leases), so it is not the same definition as the peer table. Capex by country not given.'},
+  {n:'Magenta Telekom',cmp:'DTE',st:'Unlisted subsidiary',own:'Deutsche Telekom',basis:'Country figures in DT annual report (Europe segment)',f:{cur:'EUR',yr:2025,rev:1507,ebitda:555},note:'Source: DT annual report 2025, Europe segment. EBITDA is DT\'s adjusted EBITDA AL (after leases), so it is not the same definition as the peer table. Capex and EBIT by country are not given, so the grey values show Deutsche Telekom group (all countries) for reference only.'},
   {n:'Drei (Hutchison Drei Austria)',st:'Unlisted subsidiary',own:'CK Hutchison (HKEX: 1)',basis:'Country figures in parent\'s annual report',f:{cur:'EUR',yr:2025,rev:923,ebitda:345,ebit:154,capex:199},note:'Source: CK Hutchison 2025 annual report, telecom section. Parent telco segment (CKHGT, underlying) EBITDA margin is about 27.5%.'}],
  'Croatia':[
-  {n:'Hrvatski Telekom',st:'Listed (ZSE: HT)',own:'Deutsche Telekom (majority)',basis:'Local listed telco',f:{cur:'EUR',yr:2025,rev:1142,ebit:198.08,capex:215.94},note:'Source: stockanalysis.com. DT\'s annual report shows its Croatia segment at revenue 1,049 and adjusted EBITDA AL 395 (37.7% margin), a different perimeter.'},
-  {n:'Telemach Hrvatska',st:'Unlisted',own:'United Group ('+'BC Partners majority, KKR minority)',basis:'Group level only; compare with Hrvatski Telekom (local listed)',f:{cur:'EUR',yr:'LTM Sep-25',rev:2700,ebitda:909,grp:true},note:'United Group publishes group figures in press releases (shown: last twelve months to Sep 2025, adjusted EBITDA, includes Greece). Country split not found in anything I could open.'}],
+  {n:'Hrvatski Telekom',st:'Listed (ZSE: HT)',own:'Deutsche Telekom (majority)',basis:'Local listed telco',f:{cur:'EUR',yr:2025,rev:1142,ebit:198.08,capex:215.94,emAlt:37.7,emAltTxt:'DT Croatia segment'},note:'Source: stockanalysis.com. DT\'s annual report shows its Croatia segment at revenue 1,049 and adjusted EBITDA AL 395 (37.7% margin), a different perimeter.'},
+  {n:'Telemach Hrvatska',st:'Unlisted',own:'United Group ('+'BC Partners majority, KKR minority)',basis:'Group level only; compare with Hrvatski Telekom (local listed)',f:{cur:'EUR',yr:'H1 2026',rev:161.7,ebitda:45.8,capex:22.6,noEbit:1},note:'Source: United Group H1 2026 press release, Croatia (Telemach) market table. Six months only, adjusted EBITDAal (after leases). EBIT is not published by country.'}],
  'Slovenia':[
-  {n:'Telekom Slovenije',st:'Listed (LJSE: TLSG)',own:'Slovenian state (majority)',basis:'Local listed telco',f:{cur:'EUR',yr:2025,rev:740.5,ebitda:256.8,ebit:82.0},note:'Source: its FY2025 press release (unaudited). Group includes Kosovo and others, so not Slovenia alone. Investment of EUR 199.1m is mentioned but not labelled capex, so capex is left blank. Net profit 60.6m.'},
-  {n:'Telemach Slovenija',st:'Unlisted',own:'United Group',basis:'Group level only; compare with Telekom Slovenije (local listed)',f:{cur:'EUR',yr:'LTM Sep-25',rev:2700,ebitda:909,grp:true},note:'Same United Group group figures as Croatia and Bulgaria. No Slovenia split found.'}],
+  {n:'Telekom Slovenije',st:'Listed (LJSE: TLSG)',own:'Slovenian state (majority)',basis:'Local listed telco',f:{cur:'EUR',yr:2025,rev:740.5,ebitda:256.8,ebit:82.0,capex:199.1,capexApprox:1},note:'Source: its FY2025 press release (unaudited). Group includes Kosovo and others, so not Slovenia alone. Capex uses the EUR 199.1m the release calls investments (the page words it as earmarked, so treat as approximate). Net profit 60.6m.'},
+  {n:'Telemach Slovenija',st:'Unlisted',own:'United Group',basis:'Group level only; compare with Telekom Slovenije (local listed)',f:{cur:'EUR',yr:'H1 2026',rev:148.5,ebitda:42.7,noEbit:1,noCapex:1},note:'Source: United Group H1 2026 press release, Slovenia (Telemach) market table. Six months only, adjusted EBITDAal. Capex and EBIT are not given for Slovenia.'}],
  'Serbia':[
   {n:'Yettel Srbija',st:'Unlisted',own:'e& PPF Telecom (e& 50%+1, PPF 50%-1)',basis:'Group level; parent group is unlisted, e& (ADX) is the listed owner but global',f:{cur:'EUR',yr:2025,rev:2413,ebitda:1152,grp:true},note:'Source: e& PPF Telecom FY2025 audited accounts. Group of Bulgaria, Hungary, Serbia, Slovakia. EBITDA = operating profit before D&A and impairments. 2025 growth: Yettel Serbia revenue +7.7%, EBITDA +10%. The country split is in Note D of the accounts (p. 51).'},
   {n:'Telekom Srbija (mts)',st:'State-controlled (no listing found)',own:'Republic of Serbia (majority)',basis:'No listed comparator in Serbia',f:{cur:'EUR',yr:2025,rev:2300,grp:true},note:'Group revenue about EUR 2.3bn in 2025, of which Serbia EUR 1.65bn (Tanjug, April 2026). A reported "operating profit" of EUR 1.3bn is not used: it looks inconsistent with a net profit above EUR 200m. EBITDA not found.'}],
  'Bulgaria':[
-  {n:'Vivacom',st:'Unlisted',own:'United Group',basis:'Group level; no listed Bulgarian telco in this tool',f:{cur:'EUR',yr:'LTM Sep-25',rev:2700,ebitda:909,grp:true},note:'Same United Group group figures. No Bulgaria split found.'},
+  {n:'Vivacom',st:'Unlisted',own:'United Group',basis:'Group level; no listed Bulgarian telco in this tool',f:{cur:'EUR',yr:'H1 2026',rev:392.3,ebitda:163.7,capex:56.5,noEbit:1},note:'Source: United Group H1 2026 press release, Bulgaria (Vivacom) market table. Six months only, adjusted EBITDAal. EBIT is not published by country.'},
   {n:'Yettel Bulgaria',st:'Unlisted',own:'e& PPF Telecom',basis:'Group level; parent group unlisted',f:{cur:'EUR',yr:2025,rev:2413,ebitda:1152,grp:true},note:'Same e& PPF Telecom group figures. 2025 growth: Yettel Bulgaria revenue +3.9%, EBITDA -0.6%. Country split: Note D of the accounts.'}],
  'North Macedonia':[
   {n:'Makedonski Telekom',st:'Listed (MSE: TEL)',own:'Magyar Telekom / Deutsche Telekom group',basis:'Local listed telco',f:{cur:'MKD',yr:2025,rev:12531.346,ebit:2875.321},note:'Source: Macedonian Stock Exchange. Operating profit 2025; EBITDA and capex not found. DT\'s annual report does not show North Macedonia separately.'},
-  {n:'One (Telekom Slovenije)',st:'Unlisted subsidiary',own:'Telekom Slovenije',basis:'Parent is listed (LJSE), group level',f:{cur:'EUR',yr:2025,rev:740.5,ebitda:256.8,ebit:82.0,grp:true},note:'Parent group figures (see Slovenia). Ownership from my understanding of public sources: verify.'}],
+  {n:'One (Telekom Slovenije)',st:'Unlisted subsidiary',own:'Telekom Slovenije',basis:'Parent is listed (LJSE), group level',f:{cur:'EUR',yr:2025,rev:740.5,ebitda:256.8,ebit:82.0,capex:199.1,capexApprox:1,grp:true},note:'Parent group figures (see Slovenia). Ownership from my understanding of public sources: verify.'}],
  'Belarus':[
-  {n:'MTS Belarus',st:'Unlisted',own:'MTS (Russia) with a Belarusian partner: verify',basis:'Parent listed in Moscow; sanctions make comparison hard',note:'No MTS Belarus figures found. Market context: Belarus telecom market about 5.29bn rubles in 2025, up 6.3% (Onliner, April 2026; currency not named in the article, probably BYN).'},
+  {n:'MTS Belarus',noData:1,st:'Unlisted',own:'MTS (Russia) with a Belarusian partner: verify',basis:'Parent listed in Moscow; sanctions make comparison hard',note:'No MTS Belarus figures found. Market context: Belarus telecom market about 5.29bn rubles in 2025, up 6.3% (Onliner, April 2026; currency not named in the article, probably BYN).'},
   {n:'life:)',st:'Unlisted subsidiary',own:'Turkcell (BIST: TCELL, NYSE: TKC)',basis:'Listed parent, group level',f:{cur:'TRY',yr:2025,rev:241471,ebitda:104017,grp:true},note:'Turkcell does not break out Belarus (it sits in "Other"). Group figures are inflation-restated (IAS 29), so margins are not comparable with the EUR peers.'},
-  {n:'Beltelecom',st:'State-owned',own:'Republic of Belarus',basis:'No public figures found',note:'Not searched in depth.'}]
+  {n:'Beltelecom',noData:1,st:'State-owned',own:'Republic of Belarus',basis:'No public figures found',note:'Not searched in depth.'}]
 };
 
 /* ---------- STATE ---------- */
@@ -530,14 +536,17 @@ function renderThesis(){
 function renderCountry(){
   const sel=$('#cSel');if(!sel.options.length)sel.innerHTML=Object.keys(COUNTRIES).map(c=>`<option>${c}</option>`).join('');
   const c=sel.value||Object.keys(COUNTRIES)[0];const S=window.__S||{};const a1=PEERS[0];
-  const pm=(v,r)=>v==null||r==null?'<span class="small">n/a</span>':fmt(v/r*100)+'%';
+  const NA=t=>`<span class="small">${t}</span>`;const pm=(v,r)=>v==null||r==null?NA('not published'):fmt(v/r*100)+'%';
   let h='<tr><th>Competitor</th><th>Status</th><th>Owner</th><th>Comparison basis</th><th>Rev. ('+'m)</th><th>EBITDA mgn</th><th>EBIT mgn</th><th>Capex/sales</th><th>Volatility*</th></tr>';
-  h+=`<tr class="a1"><td>A1 ${c}</td><td>Listed parent (A1 Group)</td><td>América Móvil (majority)</td><td>A1's own FY2025 report, group level. Country split is in A1's segment tables (not in the files I could open)</td><td>5,577 EUR (group)</td><td>37.0%</td><td><span class="small">n/a</span></td><td>15.9%</td><td>${S.A1?fmt(S.A1.vol)+'%':'n/a'}</td></tr>`;
+  const sg=(typeof WHY!=='undefined'&&WHY&&WHY.seg)?WHY.seg.find(x=>x.n===c):null;
+  h+=sg?`<tr class="a1"><td>A1 ${c}</td><td>Listed parent (A1 Group)</td><td>América Móvil (majority)</td><td>A1 country segment, Annual Report 2025: margin p. ${sg.pg}, EBIT and capex pp. 13 and 127. Standard IFRS EBITDA, not after leases</td><td>${fmt(sg.r,0)} EUR</td><td>${fmt(sg.m)}%</td><td>${fmt(sg.eb/sg.r*100)}%</td><td>${fmt(sg.cx/sg.r*100)}%${sg.n==='Serbia'?' <span class="small">(incl. EUR 100m 5G spectrum)</span>':''}</td><td>${S.A1?fmt(S.A1.vol)+'%':'n/a'}</td></tr>`:`<tr class="a1"><td>A1 ${c}</td><td>Listed parent (A1 Group)</td><td>América Móvil (majority)</td><td>A1's own FY2025 report, group level</td><td>5,577 EUR (group)</td><td>37.0%</td><td><span class="small">n/a</span></td><td>15.9%</td><td>${S.A1?fmt(S.A1.vol)+'%':'n/a'}</td></tr>`;
   const notes=[];
   for(const r of COUNTRIES[c]){
     const f=r.f,cmpId=r.cmp,p=PEERS.find(x=>x.id===cmpId);
-    let rev='<span class="small">n/a</span>',em='<span class="small">n/a</span>',bm=em,cm=em,vol='<span class="small">n/a</span>',basis=r.basis;
-    if(f){rev=fmt(f.rev,0)+' '+f.cur+(f.grp?' (group)':'')+' '+(f.yr&&f.yr!==2025?'['+f.yr+']':'');em=(f.approx?'~':'')+pm(f.ebitda,f.rev);bm=pm(f.ebit,f.rev);cm=pm(f.capex,f.rev);}
+    let rev=NA('not published'),em=NA('not published'),bm=em,cm=em,vol=NA(r.st.startsWith('Listed')||r.cmp?'prices not loaded':'unlisted, no share price'),basis=r.basis;
+    if(f){rev=fmt(f.rev,0)+' '+f.cur+(f.grp?' (group)':'')+' '+(f.yr&&f.yr!==2025?'['+f.yr+']':'');em=(f.approx?'~':'')+pm(f.ebitda,f.rev);bm=pm(f.ebit,f.rev);cm=(f.capexApprox&&f.capex!=null?'~':'')+pm(f.capex,f.rev);if(f.noEbit)bm=NA('not split by country');if(f.noCapex)cm=NA('not split by country');if(f.ebitda==null&&f.emAlt)em=`<span class="small" title="${f.emAltTxt}, adjusted EBITDA AL, different perimeter">~${fmt(f.emAlt)}% (${f.emAltTxt})</span>`;
+      if(p){const g=v=>`<span class="small" title="Country figure not published. Shown: ${p.short} group, all countries.">${fmt(v)}% (${p.short} group)</span>`;if(f.ebitda==null)em=g(p.f.ebitdaM);if(f.ebit==null)bm=g(p.f.ebitM);if(f.capex==null)cm=g(p.f.capexS)}}
+    else if(r.noData){rev=em=bm=cm=NA('no public figures');vol=NA('unlisted, no share price')}
     else if(p){rev=fmt(p.rev[0],0)+' '+p.cur+' (parent group)';em=fmt(p.f.ebitdaM)+'%';bm=fmt(p.f.ebitM)+'%';cm=fmt(p.f.capexS)+'%';basis=r.basis+' ('+p.short+')'}
     if(p&&S[p.id])vol=fmt(S[p.id].vol)+'%';
     h+=`<tr><td>${r.n}</td><td>${r.st}</td><td >${r.own}</td><td >${basis}</td><td>${rev}</td><td>${em}</td><td>${bm}</td><td>${cm}</td><td>${vol}</td></tr>`;
@@ -588,7 +597,7 @@ $('#sampleBtn').onclick=()=>{prices=makeSample();isLive=false;feedInfo=null;setB
 $('#metricSel').onchange=renderPeers;$('#xSel').onchange=renderThesis;$('#cSel').onchange=renderCountry;
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id===b.dataset.t));
+  const G={overview:['overview','peers','trends'],strategy:['strategy','sources','method']};const ids=G[b.dataset.t]||[b.dataset.t];document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',ids.includes(t.id)));
   renderAll();
 });
 prices=makeSample();setBanner();renderAll();
@@ -765,7 +774,7 @@ function buildContext(){
   if(thesisRes){out.THESIS_RESULTS={panel:thesisRes.panel,models:thesisRes.models.map(m=>({label:m.label,n:m.ok?m.n:null,r2:m.ok?r1(m.r2,2):null,coefs:m.ok?Object.fromEntries(Object.entries(m.coefs).map(([k,c])=>[k,{b:r1(c.b,3),p:r1(c.p,3)}])):null})),garch:thesisRes.garch.map(g=>({id:g.id,persistence:r1(g.persistence,3),long_run_vol_pct:r1(g.long_run_vol)})),event_summary:thesisRes.event_summary}}
   if(SRC&&SRC.strategy)out.STRATEGY=SRC.strategy.map(x=>({company:x.id,date:x.date,title:x.title,detail:x.detail,source:x.src}));
   if(NEWS&&NEWS.news)out.NEWS=Object.fromEntries(Object.entries(NEWS.news).map(([id,a])=>[id,a.slice(0,3).map(n=>n.title)]).filter(x=>x[1].length));
-  out.A1_REPORT_FY2025=typeof WHY!=='undefined'?{source:WHY.src,group_margin_pct:WHY.groupMargin,segments:WHY.seg.map(x=>({country:x.n,revenue_m:x.r,ebitda_m:x.e,ebitda_margin_pct:x.r>0?r1(x.e/x.r*100):null,ebitda_margin_2024_pct:x.r0>0?r1(x.e0/x.r0*100):null,page:x.pg})),management_explanations:WHY.ev.map(e=>({point:e.t,detail:e.d,page:e.p})),limits:WHY.lim}:null;
+  out.A1_REPORT_FY2025=typeof WHY!=='undefined'?{source:WHY.src,group_margin_pct:WHY.groupMargin,segments:WHY.seg.map(x=>({country:x.n,revenue_m:x.r,ebitda_m:x.e,ebitda_margin_pct:x.r>0?r1(x.e/x.r*100):null,ebitda_margin_2024_pct:x.r0>0?r1(x.e0/x.r0*100):null,ebit_m:x.eb,ebit_2024_m:x.eb0,capex_m:x.cx,capex_2024_m:x.cx0,page:x.pg})),peer_reports:WHY.peers.map(p=>({company:p.n,margin_as_reported:p.m,drivers:p.pts,source:p.src})),findings:WHY.synth,management_explanations:WHY.ev.map(e=>({point:e.t,detail:e.d,page:e.p})),limits:WHY.lim}:null;
   out.COUNTRY_NOTES=Object.entries(COUNTRIES).map(([c,rows])=>({country:c,competitors:rows.map(r=>({name:r.n,status:r.st,note:(r.note||'').slice(0,160)}))}));
   let t=JSON.stringify(out);if(t.length>60000){delete out.NEWS;delete out.COUNTRY_NOTES;t=JSON.stringify(out)}
   return t;
@@ -808,27 +817,52 @@ async function sendQ(q){
 
 /* ---------- WHY TAB ---------- */
 const AR='https://a1.com/wp-content/uploads/sites/6/2026/03/A1-Telekom-Austria-Group-Annual-financial-report-2025.pdf';
-const WHY={
- src:'A1 Telekom Austria Group, Annual Financial Report 2025. Country revenue and EBITDA p. 12; margins pp. 14 to 18; group p. 8.',
+var WHY={
+ src:'A1 Telekom Austria Group, Annual Financial Report 2025. Country revenue and EBITDA p. 12; EBIT and capex p. 13 and segment note pp. 127 to 128; margins pp. 14 to 18; group p. 8.',
  seg:[
-  {n:'Austria',r:2745,r0:2807,e:988,e0:1039,m:36.0,m0:37.0,pg:14},{n:'Bulgaria',r:895,r0:821,e:371,e0:341,m:41.5,m0:41.5,pg:16},{n:'Croatia',r:592,r0:570,e:239,e0:224,m:40.4,m0:39.3,pg:16},
-  {n:'Belarus',r:530,r0:449,e:231,e0:196,m:43.6,m0:43.6,pg:17},{n:'Slovenia',r:234,r0:230,e:49,e0:52,m:21.1,m0:22.5,pg:17},{n:'Serbia',r:422,r0:398,e:152,e0:146,m:35.9,m0:36.8,pg:17},
-  {n:'North Macedonia',r:178,r0:164,e:62,e0:57,m:34.8,m0:34.7,pg:18},{n:'Corporate and eliminations',r:-18,r0:-26,e:-30,e0:-33,pg:12}],
+  {n:'Austria',r:2745,r0:2807,e:988,e0:1039,m:36.0,m0:37.0,eb:305,eb0:387,cx:445,cx0:524,pg:14},{n:'Bulgaria',r:895,r0:821,e:371,e0:341,m:41.5,m0:41.5,eb:211,eb0:187,cx:113,cx0:121,pg:16},{n:'Croatia',r:592,r0:570,e:239,e0:224,m:40.4,m0:39.3,eb:109,eb0:100,cx:80,cx0:79,pg:16},
+  {n:'Belarus',r:530,r0:449,e:231,e0:196,m:43.6,m0:43.6,eb:190,eb0:155,cx:30,cx0:54,pg:17},{n:'Slovenia',r:234,r0:230,e:49,e0:52,m:21.1,m0:22.5,eb:-18,eb0:-14,cx:21,cx0:21,pg:17},{n:'Serbia',r:422,r0:398,e:152,e0:146,m:35.9,m0:36.8,eb:63,eb0:62,cx:169,cx0:33,pg:17},
+  {n:'North Macedonia',r:178,r0:164,e:62,e0:57,m:34.8,m0:34.7,eb:28,eb0:24,cx:20,cx0:21,pg:18},{n:'Corporate and eliminations',r:-18,r0:-26,e:-30,e0:-33,eb:-36,eb0:-39,cx:10,cx0:10,pg:12}],
  groupMargin:37.0,groupMargin0:37.3,
  ev:[
   {t:'The Austrian market stayed highly competitive',d:'Management says competition "remained intense" throughout 2025, with intensive promotions and market investments in fixed-line, even though low-price mobile showed early signs of stabilising.',p:'p. 14'},
   {t:'Device margin fell because of higher subsidies',d:'The device margin was "significantly lower" due to higher subsidies, and equipment costs rose. Equipment costs are named as the main reason total costs rose in the group.',p:'pp. 9, 14'},
   {t:'Austria cut some costs, but not enough',d:'Core operating costs, workforce costs and network maintenance fell in Austria, but this did not offset the weaker device margin. Austria EBITDA fell 4.9%, or 1.9% before one-offs and restructuring.',p:'pp. 14 to 15'},
   {t:'Restructuring and a one-off added pressure',d:'Restructuring expenses in Austria were EUR 96m (2024: EUR 89m). A negative one-off of EUR 17m came from a legal-case provision booked in Austria in Q4. In 2024 one-offs were positive EUR 13m.',p:'pp. 9, 11'},
+  {t:'Austria\'s operating profit (EBIT) fell by a fifth',d:'Austria EBIT was EUR 305m (2024: EUR 387m), down 21.1%, an EBIT margin of about 11% against 15% for the group. Austria capex fell 15% to EUR 445m, so spending cuts did not offset the lower EBITDA.',p:'p. 13'},
   {t:'Depreciation and amortisation rose',d:'Depreciation, amortisation and impairments were EUR 1,211m (2024: EUR 1,160m), up 4.4%, from higher right-of-use depreciation and a changed asset mix. This explains the smaller part of the EBIT gap.',p:'pp. 8 to 9'},
   {t:'Slovenia is a small but weak market',d:'Slovenia earns a 21.1% EBITDA margin (2024: 22.5%), far below the other countries. It is small, so its effect on the group is limited.',p:'p. 17'}],
  lim:[
-  'I have not read the peers\' reports yet. This explains why A1 is below the leaders, but not what the leaders do differently.',
+  'Peers read in depth: KPN, Telenor, Swisscom, Telefónica, Proximus and Telia. Deutsche Telekom only at headline level, and Orange not at all (its website blocked my reader).',
+  'I read the documents through a web reader, so check each number against the linked source before quoting it in the thesis. Figures marked "my calculation" or "my estimate" are derived, not reported.',
   'KPN operates only in the Netherlands and Telenor in the Nordics and Asia, so their margins reflect different markets. A gap is not automatically A1\'s fault.',
-  'The dashboard\'s FY2025 figures (36.3% EBITDA margin) come from a data provider. A1\'s own group margin is 37.0%. The definitions differ slightly.',
-  'The reasons above are management\'s explanations. Whether the subsidies pay back through customer value or lower churn is not in this data.',
+  'Peers mostly report EBITDA after leases (AL) or adjusted EBITDA. A1\'s 37.0% is standard EBITDA, and the dashboard\'s 36.3% uses EBIT plus D&A from a data provider. None of these match exactly.',
+  'The reasons are the companies\' own explanations. Whether subsidies pay back through customer value or lower churn is not in this data.',
   'The what-if is simple arithmetic on A1\'s country figures. It does not say that such margins are achievable.']
 };
+
+WHY.peers=[
+ {n:'KPN',m:'EBITDA AL margin 44.6% in Q4 2025, up 100 basis points (CFO)',pts:['Indirect costs were EUR 10m lower: "a clear turning point". Workforce down by over 300 FTEs (over 500 with contractors).','Targets about EUR 100m of net indirect opex savings a year by 2030, with EUR 15 to 20m more in 2026.','Sets broadband prices each year around inflation, and raised mobile prices in October.','Rival fibre builders (Delta, ODF) have stopped expanding, fixed wireless is "a niche", and the shrinking copper base lowers churn.','Capex about EUR 1.25bn in 2026, below EUR 1bn by 2027.'],src:'KPN Q4 2025 earnings call transcript',u:'https://s202.q4cdn.com/886546970/files/doc_financials/2025/q4/KPN-Q4-2025-Transcript.pdf'},
+ {n:'Telenor',m:'Group adjusted EBITDA margin 45.0% in 2025 (43.9% in 2024); Nordics 45.0%, Infrastructure (towers) 60.8%, Asia 57.1%',pts:['Nordics opex fell 1.3% organically in 2025, through transformation and efficiency work such as shared services (no savings amount given).','Norway adjusted EBITDA grew 9.7% organically, helped by wholesale revenue.','Capex was 13.8% of sales; target below 13% by 2028 for the Nordics.','The group margin is lifted by a towers segment (60.8%) and Asia (57.1%), a structure A1 does not have.'],src:'Telenor Q4 and Full Year 2025 report, pp. 3, 8, 10, 13, 31',u:'https://www.telenor.com/binaries/investors/reports-and-information/quarterly/2025/Report-Q4-and-Full-Year-2025.pdf'},
+ {n:'Swisscom',m:'EBITDAaL CHF 4,984m on revenue CHF 15,048m, about 33.1% (my calculation)',pts:['Switzerland is 52% of revenue and 67% of EBITDAaL (about 43% margin, my estimate). Italy (45% of revenue, 32% of EBITDAaL, about 24%) dilutes the group.','Workforce down 573 FTEs (2.4%), mostly customer care and IT business in Switzerland.','Capex about 20.4% of revenue (my calculation).'],src:'Swisscom Annual Report 2025, financial review summary',u:'https://report.swisscom.ch/en/2025/report/management-commentary/financial-review/summary'},
+ {n:'Proximus',m:'Domestic underlying EBITDA margin 35.5%; Global 11.0%',pts:['Domestic EBITDA grew 1.9% on stable revenue, with lower opex.','New cost programme aims at EUR 180m gross savings between 2025 and 2028.','Fibre reaches about 42% of the population; capex fell 7.8% as fibre deployment passed its peak.','Booked a EUR 275m goodwill impairment on its Global business, which is in structural decline.'],src:'Proximus Group results Q4 and full-year 2025',u:'https://www.proximus.com/news/2026/202602-financial-results-q4-2025.html'},
+ {n:'Telefónica',m:'Adjusted EBITDA EUR 11,918m on revenue EUR 35,120m, about 33.9% (my calculation)',pts:['Spain had its best year since 2018, with revenue, EBITDA and operating cash flow growing together for the first time since 2008.','Capex was 12.4% of revenue (target below 12.5%).','Restructuring costs from workforce adjustment and sales of Latin American units explain the EUR 4.3bn net loss.'],src:'Telefónica FY2025 results press release, 24 Feb 2026',u:'https://www.telefonica.com/en/communication-room/press-room/telefonica-accelerates-growth-quarter-2025-increases-revenues-adjusted-ebitda-free-cash-flow/'},
+ {n:'Telia',m:'No margin stated in the report extract; adjusted EBITDA +5.2% like for like',pts:['Growth came from service revenue and lower operating expenses.','Union talks started on about 600 position cuts, with 150 new positions in growth areas.','Capex fell to SEK 12.8bn; a SEK 3.7bn provision hit reported EBITDA.'],src:'Telia Company year-end report 2025',u:'https://www.telecomtv.com/content/access-evolution/telia-company-year-end-report-january-december-2025-54739'},
+ {n:'Deutsche Telekom',m:'Adjusted EBITDA AL EUR 44.2bn (+2.8%) on service revenue EUR 99.4bn',pts:['Only headline figures were readable. Segment margins and cost drivers were not.'],src:'Deutsche Telekom Annual Report 2025 (highlights)',u:'https://report.telekom.com/annual-report-2025/'},
+ {n:'Orange',m:'Not read',pts:['Orange\'s website blocked my reader, so no figures or drivers were collected.'],src:'Orange press release (blocked)',u:'https://www.orange.com/en/press-release/success-of-lead-the-future-2023-2025-strategic-plan-2025-objectives-fully-achieved-440051'}
+];
+WHY.synth=[
+ {t:'1. The gap sits in Austria (fact)',d:'Austria is half of A1 and earns 36.0%, down 1.0 point. Bulgaria, Croatia and Belarus already earn 40 to 44%, at the level of KPN (44.6% on its own definition) and Telenor.'},
+ {t:'2. Cost cutting alone does not separate leaders from A1 (fact, with a caution)',d:'KPN cut over 300 FTEs, Swisscom 573, Telia plans about 600. A1\'s workforce costs were almost flat before restructuring, with restructuring costs of EUR 96m in Austria. So A1 also cuts, but its Austrian income side was hit harder.'},
+ {t:'3. The difference looks like pricing and market structure (hypothesis)',d:'KPN raises prices with inflation and its rivals have stopped fibre expansion. A1 describes Austria as "highly competitive", with higher device subsidies lowering the device margin. The reports do not prove that this explains the margin gap, but both point the same way.'},
+ {t:'4. Part of the leaders\' margin is structure, not performance (fact)',d:'Telenor\'s group includes a towers segment at 60.8% and Asia at 57.1%. Swisscom is diluted by Italy. A1 already spun off its towers in 2023 (EuroTeleSites). Also, KPN and others report EBITDA after leases (AL), while A1\'s 37.0% is its standard EBITDA, so the figures are not like for like.'}
+];
+function renderPeerWhy(){
+  let h='<tr><th>Company</th><th>Margin as reported</th><th>What drives it (from their report)</th><th>Source</th></tr>';
+  for(const p of WHY.peers)h+=`<tr><td><b>${p.n}</b></td><td style="text-align:left">${p.m}</td><td style="text-align:left"><ul style="margin:0;padding-left:16px">${p.pts.map(x=>`<li>${x}</li>`).join('')}</ul></td><td style="text-align:left"><a href="${p.u}" target="_blank" rel="noopener" style="color:var(--red)">${p.src}</a></td></tr>`;
+  $('#peerWhy').innerHTML=h;
+  $('#synth').innerHTML=WHY.synth.map(x=>`<div class="item"><b>${x.t}</b><span class="small">${x.d}</span></div>`).join('');
+}
 function whySeg(){return WHY.seg}
 function renderWhy(){
   const A=PEERS.find(p=>p.id==='A1'),others=PEERS.filter(p=>p.id!=='A1');
@@ -848,11 +882,11 @@ function renderWhy(){
   const sg=WHY.seg,tr=sg.reduce((a,x)=>a+x.r,0),te=sg.reduce((a,x)=>a+x.e,0);
   const core=sg.filter(x=>x.n!=='Corporate and eliminations');
   drawChart('seg','segChart',{type:'bar',data:{labels:core.map(x=>x.n),datasets:[{label:'EBITDA margin 2025 (%)',data:core.map(x=>x.m),backgroundColor:core.map(x=>x.m<WHY.groupMargin?'#d90000':'#9e9e9e'),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'A1 EBITDA margin by country, 2025 (group '+WHY.groupMargin+'%)'}},scales:{y:{min:0,grid:{color:'#eee'}},x:{grid:{display:false}}}}});
-  let h='<tr><th>Country</th><th>Revenue</th><th>Share of group</th><th>EBITDA</th><th>Margin 2025</th><th>Margin 2024</th><th>Change (pts)</th><th>Page</th></tr>';
-  for(const x of sg){const m=x.m!=null?x.m:null,m0=x.m0!=null?x.m0:null;h+=`<tr><td style="text-align:left">${x.n}</td><td>${fmt(x.r,0)}</td><td>${x.r>0?fmt(x.r/tr*100,0)+'%':''}</td><td>${fmt(x.e,0)}</td><td>${m==null?'n/a':fmt(m)+'%'}</td><td>${m0==null?'n/a':fmt(m0)+'%'}</td><td>${m==null?'':fmt(m-m0)}</td><td>${x.pg}</td></tr>`}
-  h+=`<tr class="a1"><td style="text-align:left">Group</td><td>${fmt(tr,0)}</td><td>100%</td><td>${fmt(te,0)}</td><td>${fmt(te/tr*100)}%</td><td>${WHY.groupMargin0}%</td><td></td><td>8</td></tr>`;
+  let h='<tr><th>Country</th><th>Revenue</th><th>Share of group</th><th>EBITDA</th><th>Margin 2025</th><th>Margin 2024</th><th>Change (pts)</th><th>EBIT</th><th>EBIT mgn</th><th>Capex</th><th>Capex/sales</th><th>Page</th></tr>';
+  for(const x of sg){const m=x.m!=null?x.m:null,m0=x.m0!=null?x.m0:null;h+=`<tr><td style="text-align:left">${x.n}</td><td>${fmt(x.r,0)}</td><td>${x.r>0?fmt(x.r/tr*100,0)+'%':''}</td><td>${fmt(x.e,0)}</td><td>${m==null?'n/a':fmt(m)+'%'}</td><td>${m0==null?'n/a':fmt(m0)+'%'}</td><td>${m==null?'':fmt(m-m0)}</td><td>${fmt(x.eb,0)}</td><td>${x.r>0?fmt(x.eb/x.r*100)+'%':'n/a'}</td><td>${fmt(x.cx,0)}</td><td>${x.r>0?fmt(x.cx/x.r*100)+'%':'n/a'}</td><td>${x.pg}</td></tr>`}
+  h+=`<tr class="a1"><td style="text-align:left">Group</td><td>${fmt(tr,0)}</td><td>100%</td><td>${fmt(te,0)}</td><td>${fmt(te/tr*100)}%</td><td>${WHY.groupMargin0}%</td><td></td><td>${fmt(sg.reduce((a,x)=>a+x.eb,0),0)}</td><td>${fmt(sg.reduce((a,x)=>a+x.eb,0)/tr*100)}%</td><td>${fmt(sg.reduce((a,x)=>a+x.cx,0),0)}</td><td>${fmt(sg.reduce((a,x)=>a+x.cx,0)/tr*100)}%</td><td>8</td></tr>`;
   $('#segT').innerHTML=h;
-  $('#segSrc').innerHTML=`Source: <a href="${AR}" target="_blank" rel="noopener" style="color:var(--red)">${WHY.src}</a> Margins are as reported by A1. Country rows add up to the group totals (revenue differs by 1 from rounding).`;
+  $('#segSrc').innerHTML=`Source: <a href="${AR}" target="_blank" rel="noopener" style="color:var(--red)">${WHY.src}</a> Margins are as reported by A1. Country rows add up to the group totals (revenue and capex differ by 1 from rounding).`;
   // what-if
   const at=sg.find(x=>x.n==='Austria'),si=sg.find(x=>x.n==='Slovenia');
   const sA=$('#sAT'),sS=$('#sSI');
@@ -862,7 +896,7 @@ function renderWhy(){
   $('#whatIf').innerHTML=`Group EBITDA would be <b>EUR ${fmt(nE,0)}m</b> (${dE>=0?'+':''}${fmt(dE,0)}m), a group margin of <b>${fmt(nE/tr*100)}%</b> (${fmt(nE/tr*100-te/tr*100,1)} points vs ${fmt(te/tr*100)}% now).`;
   // evidence and limits
   $('#evList').innerHTML=WHY.ev.map(e=>`<div class="item"><b>${e.t}</b><span class="small">${e.d}</span><span class="lnk"><a href="${AR}" target="_blank" rel="noopener">A1 Annual Financial Report 2025, ${e.p}</a></span></div>`).join('');
-  $('#whyLimits').innerHTML=WHY.lim.map(x=>`<li>${x}</li>`).join('');
+  $('#whyLimits').innerHTML=WHY.lim.map(x=>`<li>${x}</li>`).join('');renderPeerWhy();
 }
 $('#whyAsk').onclick=()=>{$('#chat').classList.add('on');$('#cq').value='Using the Why tab evidence, explain why A1\'s EBITDA margin is below KPN and Telenor, and what A1 could do about it. Separate facts from hypotheses.';$('#cq').focus()};
 </script>
