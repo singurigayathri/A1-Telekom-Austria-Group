@@ -2,7 +2,7 @@
    1) Deploy worker.js on Cloudflare, then paste its address into WORKER_URL below.
    2) While WORKER_URL is empty the bot falls back to "paste your own key" (gear icon). */
 (function(){
-var WORKER_URL=""; // example: "https://a1-chat.yourname.workers.dev"
+var WORKER_URL="https://a1-chat.singurigayathri.workers.dev"; // example: "https://a1-chat.yourname.workers.dev"
 var SYSTEM=`You are an analyst assistant inside a thesis dashboard that benchmarks A1 Telekom Austria against European telecom peers. The DATA block below is your only source.
 Rules:
 - Use only numbers that appear in DATA. If something is not in DATA, say "not in the data" and say what document would answer it. Never invent figures.
@@ -13,7 +13,7 @@ Rules:
 - Currency: ratios are currency-neutral; absolute amounts are local currency millions. Overview figures are FY2025 from company reports; Trends figures are Yahoo Finance and can differ slightly.
 - Answer in plain language, under 250 words unless asked for more. Use short bullets.
 - A FORECAST block, if present, is output of a random forest model on share-price volatility. Present it as a model estimate with its range and its test result, never as a prediction or advice. SCENARIOS are hand-written hypotheses.`;
-var MODELS={gemini:'gemini-2.5-flash',claude:'claude-sonnet-5-5'};
+var MODELS={gemini:'gemini-3.8-flash',claude:'claude-sonnet-5-5'};
 var cfg={}, hist=[], q=function(s){return document.querySelector(s)};
 var css=`.chatfab{position:fixed;right:18px;bottom:18px;z-index:50;background:#C80000;color:#fff;border:0;border-radius:999px;padding:12px 18px;font:700 14px Inter,Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer}
 .chat{position:fixed;right:18px;bottom:72px;z-index:50;width:420px;max-width:calc(100vw - 24px);height:min(640px,calc(100vh - 100px));background:#fff;color:#222;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:none;flex-direction:column;overflow:hidden;font-family:Inter,Arial,sans-serif}
