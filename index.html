@@ -77,7 +77,11 @@ const med=a=>{const s=[...a].filter(x=>x!=null&&isFinite(x)).sort((x,y)=>x-y),n=
 const rank=k=>[...P].sort((a,b)=>b[k]-a[k]).findIndex(x=>x.id==='A1')+1;
 const f1=(v,d=1)=>v==null||!isFinite(v)?'n/a':Number(v).toFixed(d);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let DATA={prices:null,thesis:null,fund:null,src:null,news:null};
+const SCEN_DEFAULT=[
+ {id:'base',name:'Base: slow repair',text:'Austria stays competitive. Savings from the EUR 96m restructuring arrive gradually, depreciation keeps rising, and the margin stays broadly flat.',evidence:['Austria EBIT 387m to 305m, down 21% (A1 Annual Report 2025)','Restructuring EUR 96m and legal provision EUR 17m (one-offs)','Depreciation up 4.4%'],watch:'Next Austria EBIT result'},
+ {id:'up',name:'Upside: calmer market',text:'Rivals follow inflation-linked price rises and cut back promotions, device subsidies fall, and cost programmes lift Austria EBIT back toward its 2024 level.',evidence:['KPN prices follow inflation and rival fibre builders stopped expanding (KPN reports)','Job cuts at peers: KPN over 300, Swisscom 573 FTE, Telia about 600 planned'],watch:'Competitors\' price moves and promotions'},
+ {id:'down',name:'Downside: price war continues',text:'Promotions and higher device subsidies persist, device margin stays well below last year, and further restructuring is needed. Austria EBIT falls again.',evidence:['Management cites intense competition and promotions','Device margin significantly lower because of higher subsidies (A1 Annual Report 2025)'],watch:'Device subsidies and the next restructuring step'}];
+let DATA={prices:null,thesis:null,fund:null,src:null,news:null,forecast:null,scen:null};
 /* ---------- chart helpers ---------- */
 let chart=null;
 function show(kind){document.getElementById('cbox').style.display=kind==='chart'?'block':'none';document.getElementById('panel').style.display=kind==='panel'?'block':'none'}
@@ -238,10 +242,38 @@ function buildSteps(){
  const N=DATA.news&&DATA.news.news&&DATA.news.news.A1;
  if(N&&N.length)add(6,{tag:['fact','FACT'],h:'Latest A1 headlines',p:()=>'Automatic Yahoo Finance headlines, refreshed by the daily job.',cap:'Headlines are not vetted. Treat as leads, not evidence.',draw:()=>panelItems(N.slice(0,6).map(n=>({t:esc(n.title),m:esc((n.publisher||'')+' '+(typeof n.time==='string'?n.time.slice(0,10):'')),u:n.link,s:'Open'})))});
  add(6,{tag:['sug','SUGGESTION'],h:'Options to discuss (not conclusions)',p:()=>'',html:`<ul><li><b>Austria pricing and subsidies:</b> test whether lower device subsidies or smaller promotions keep customers (needs churn and payback data).</li><li><b>Cost programme:</b> compare A1 Austria workforce and network costs per customer with KPN and Swisscom.</li><li><b>Capex timing:</b> Serbia\'s 5G spectrum (EUR 100m) is one-off; Austria capex already fell 15%.</li><li><b>Keep the strong markets strong:</b> Bulgaria, Croatia and Belarus carry the group.</li></ul><p class="src">Discussion points built on public data. They need internal data to be decided.</p>`,cap:'Where A1 sits: EBITDA margin vs capex intensity.',draw:scatter});
- add(6,{tag:['fact','NEXT'],h:'Explore the data yourself',p:()=>'The dashboard has the tools: compare countries side by side, see sources and methodology, pick other tickers and ask the data a question.',html:`<a class="btn openDash" href="#dashboard">Open the dashboard</a>`,cap:'',draw:()=>panelItems([{t:'Country view',m:'Pick a country and compare A1 with local competitors'},{t:'Strategy & sources',m:'Reports, earnings calls, news and methodology'},{t:'Market & risk',m:'Choose companies and tickers, change the period'},{t:'Ask the data',m:'Chatbot (needs your own API key)'}])});
+
+ // 7 looking ahead
+ const FC=DATA.forecast,SCEN=(DATA.scen&&DATA.scen.scenarios)||SCEN_DEFAULT;
+ const FA=FC&&FC.companies&&FC.companies.A1;
+ add(7,{tag:['hyp','HYPOTHESIS'],h:'The question: where is A1 heading?',p:()=>'If nothing changes, how bumpy will A1\'s share price be over the next two years? This chapter answers with a model for the numbers and three scenarios in words. Both are hypotheses, not promises.',cap:'Chapter 7 is a forecast. Read it as a range, not a point.',draw:()=>panelItems([{t:'1. Random forest',m:'Learns from past share-price risk and the last published margin, capex and debt of 17 telcos'},{t:'2. Honest test',m:'Compared with the simple rule that volatility stays where it is'},{t:'3. Three scenarios',m:'Written by hand from the annual reports, with their evidence'}])});
+ if(FA&&FA.h1){
+  const H=(FC.history.A1||[]),n=H.length,A=FA;
+  add(7,{tag:['calc','CALCULATION'],h:'Forecast for A1: share-price risk',p:()=>`A1\'s volatility over the last 12 months is ${f1(A.current)}%. The random forest expects ${f1(A.h1.pred)}% over the next 12 months (likely range ${f1(A.h1.lo)} to ${f1(A.h1.hi)}%)${A.h2?` and ${f1(A.h2.pred)}% in months 13 to 24 (range ${f1(A.h2.lo)} to ${f1(A.h2.hi)}%)`:''}. The median of the other companies is expected at ${f1(FC.peer_median_h1)}%.`,cap:'Annualised volatility of daily share returns. Range = forecast plus the 10th and 90th percentile of the model\'s errors on the last 3 years.',draw:()=>{
+   const months=H.map(x=>x[0]);const pad=[null,null];
+   const peerMed=months.map(m=>{const v=Object.keys(FC.history).filter(k=>k!=='A1'&&!/example/i.test(nm(k))).map(k=>{const f=FC.history[k].find(x=>x[0]===m);return f?f[1]:null}).filter(x=>x!=null);return v.length?+med(v).toFixed(1):null}).concat(pad);
+   const tail=(a,b,c)=>Array(n-1).fill(null).concat([H[n-1][1],a,b]);
+   mk({type:'line',data:{labels:months.concat(['in 12 months','in 24 months']),datasets:[
+    {label:'lo',data:tail(A.h1.lo,A.h2?A.h2.lo:null),borderWidth:0,pointRadius:0,fill:false},
+    {label:'Likely range',data:tail(A.h1.hi,A.h2?A.h2.hi:null),borderWidth:0,pointRadius:0,fill:'-1',backgroundColor:'rgba(225,6,0,.18)'},
+    {label:'Peer median (past)',data:peerMed,borderColor:GREY,borderWidth:2,pointRadius:0,spanGaps:true,tension:.25},
+    {label:'A1 (past)',data:H.map(x=>x[1]).concat(pad),borderColor:RED,borderWidth:3,pointRadius:0,tension:.25},
+    {label:'A1 forecast',data:tail(A.h1.pred,A.h2?A.h2.pred:null),borderColor:RED,borderWidth:3,borderDash:[7,5],pointRadius:4,pointBackgroundColor:RED,spanGaps:true}]},
+    options:{...base,plugins:{legend:{display:true,labels:{color:INK,filter:i=>i.text!=='lo'}},title:T('A1 annualised volatility, %, with 2-year forecast')},scales:{x:{ticks:{maxTicksLimit:8}}}}})}});
+  const ids=Object.keys(FC.companies).filter(k=>FC.companies[k].h1&&!/example/i.test(nm(k))).sort((a,b)=>FC.companies[b].h1.pred-FC.companies[a].h1.pred);
+  const rk=ids.indexOf('A1')+1;
+  add(7,{tag:['calc','CALCULATION'],h:'A1 against the peers, 12 months ahead',p:()=>`Ranked by expected share-price risk, A1 is number ${rk} of ${ids.length} (1 = most volatile). Dark bars show the last 12 months, light bars (red for A1) the forecast.`,cap:'Same model for every company. Example tickers are left out.',draw:()=>mk({type:'bar',data:{labels:ids.map(nm),datasets:[{label:'Now (last 12 months)',data:ids.map(k=>FC.companies[k].current),backgroundColor:'#3a3a44'},{label:'Forecast, next 12 months',data:ids.map(k=>FC.companies[k].h1.pred),backgroundColor:ids.map(k=>k==='A1'?RED:GREY)}]},options:{...base,indexAxis:'y',plugins:{legend:{display:true,labels:{color:INK}},title:T('Annualised volatility, %: now vs forecast')}}})});
+  const imp=FC.importance.slice(0,8);
+  add(7,{tag:['calc','CALCULATION'],h:'What the forest looks at',p:()=>`The inputs it relies on most: ${imp.slice(0,3).map(x=>esc(x.label.toLowerCase())).join(', ')}. ${FC.uses_fundamentals?'The last published EBITDA margin, capex/sales and leverage are inputs too, but carry '+f1(imp.filter(x=>['ebitda_m','capex_s','lev'].includes(x.f)).reduce((s,x)=>s+x.v,0),0)+'% of the weight between them.':'Fundamentals were not available in this run.'}`,cap:'Share of the forest\'s splits that use each input (higher = more important). Importance is not cause.',draw:()=>simpleBars(imp.map(x=>x.label),imp.map(x=>x.v),()=>false,'Importance of each input, %',true)});
+  const V1=FC.validation&&FC.validation.h1,V2=FC.validation&&FC.validation.h2;
+  add(7,{tag:['calc','CALCULATION'],h:'Honest test: is it better than guessing "no change"?',p:()=>V1?`Tested on ${V1.test_from} to ${V1.test_to}, training only on earlier data. Average error of the forest: ${f1(V1.rmse_forest,2)} points; of the simple rule "volatility stays the same": ${f1(V1.rmse_naive,2)} points. ${V1.beats_naive?'The forest is closer to what actually happened.':'The forest does not beat the simple rule, so treat the forecast as no better than assuming no change.'}`:'Not enough history to test the model on past data.',cap:'RMSE = typical size of the forecast error, in volatility points. Lower is better.',draw:()=>V1?mk({type:'bar',data:{labels:['Next 12 months'].concat(V2?['Months 13 to 24']:[]),datasets:[{label:'Random forest',data:[V1.rmse_forest].concat(V2?[V2.rmse_forest]:[]),backgroundColor:RED},{label:'"No change" rule',data:[V1.rmse_naive].concat(V2?[V2.rmse_naive]:[]),backgroundColor:GREY}]},options:{...base,plugins:{legend:{display:true,labels:{color:INK}},title:T('Forecast error (RMSE), volatility points')},scales:{y:{beginAtZero:true}}}}):none('No validation available.')});
+ } else add(7,{tag:['na','DATA PENDING'],h:'The forecast is not on the site yet',p:()=>'The random forest forecast appears here once the weekly Thesis analysis job has run forecast.py and written data/forecast.json.',cap:'Missing file: data/forecast.json',draw:()=>none('Run the "Thesis analysis" workflow once (GitHub repo, Actions tab, Run workflow).')});
+ add(7,{tag:['hyp','HYPOTHESIS'],h:'Three scenarios, written from the reports',p:()=>FA&&FA.h1?`For scale, the model\'s 12-month range for A1 is ${f1(FA.h1.lo)}% (calm), ${f1(FA.h1.pred)}% (central) and ${f1(FA.h1.hi)}% (turbulent). The stories below are my reading of the reports, not outputs of the model.`:'Written by hand from the company reports. Each rests on facts listed under it.',html:`<ul>${SCEN.map(s=>`<li><b>${esc(s.name)}.</b> ${esc(s.text)}</li>`).join('')}</ul>`,cap:'Qualitative scenarios. Hypotheses to discuss, not conclusions.',draw:()=>panelItems(SCEN.map(s=>({t:s.name,m:'Evidence: '+s.evidence.join('; ')+'. Watch: '+s.watch})))});
+ add(7,{tag:['sug','LIMITS'],h:'What this forecast cannot tell you',p:()=>'',html:`<ul><li>Small data set: 17 companies and about ten years of prices.</li><li>Neighbouring months overlap, so the test is only indicative.</li><li>The range comes from past model errors, not from a guarantee.</li><li>Association, not cause. A surprise (a bid, a regulation change) is not in the model.</li><li>Not investment advice.</li></ul>`,cap:'',draw:()=>panelItems([{t:'Use it as',m:'A calm baseline to compare scenarios against'},{t:'Not as',m:'A price target or a trading signal'}])});
+ add(7,{tag:['fact','NEXT'],h:'Explore the data yourself',p:()=>'The dashboard has the tools: compare countries side by side, see sources and methodology, pick other tickers and ask the data a question.',html:`<a class="btn openDash" href="#dashboard">Open the dashboard</a>`,cap:'',draw:()=>panelItems([{t:'Country view',m:'Pick a country and compare A1 with local competitors'},{t:'Strategy & sources',m:'Reports, earnings calls, news and methodology'},{t:'Market & risk',m:'Choose companies and tickers, change the period'},{t:'Ask the data',m:'Chatbot (needs your own API key)'}])});
  return S;
 }
-const CH={1:'Where A1 stands',2:'Over time',3:'Why the gap',4:'How investors see it',5:'What the data says statistically',6:'Strategy and options'};
+const CH={1:'Where A1 stands',2:'Over time',3:'Why the gap',4:'How investors see it',5:'What the data says statistically',6:'Strategy and options',7:'Looking ahead: the next two years'};
 let S=[],cur=-1;
 function render(){
  S=buildSteps();const box=document.getElementById('steps');box.innerHTML='';let last=0;
@@ -256,10 +288,31 @@ const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)go(+e.
 addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('prog').style.width=(100*scrollY/(h.scrollHeight-innerHeight))+'%';if(scrollY<innerHeight*.45&&cur!==-1){cur=-1;setMap('intro');document.getElementById('chap').innerHTML=''}},{passive:true});
 render();
 const get=(u)=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>null);
-Promise.all([get('data/benchmark_prices.json'),get('data/thesis_results.json'),get('data/fundamentals.json'),get('data/sources.json'),get('data/news.json')]).then(([a,b,c,d,e])=>{
- DATA.prices=a&&a.prices;DATA.thesis=b;DATA.fund=c;DATA.src=d;DATA.news=e;
+Promise.all([get('data/benchmark_prices.json'),get('data/thesis_results.json'),get('data/fundamentals.json'),get('data/sources.json'),get('data/news.json'),get('data/forecast.json'),get('data/scenarios.json')]).then(([a,b,c,d,e,f,g])=>{
+ DATA.prices=a&&a.prices;DATA.thesis=b;DATA.fund=c;DATA.src=d;DATA.news=e;DATA.forecast=f;DATA.scen=g;
  const y=window.scrollY;render();window.scrollTo(0,y)});
-</script><div id="dash" style="position:fixed;inset:0;z-index:9999;background:#fff;display:none;flex-direction:column">
+</script><script src="chat.js"></script>
+<script>
+(function(){
+function r(v,n){return v==null||isNaN(v)?null:+(+v).toFixed(n==null?1:n)}
+function ctx(){
+  var o={NOTE:"Story page. Figures are Yahoo Finance based trends, thesis results and the model forecast. Company-report FY2025 figures are on the dashboard."};
+  var F=DATA.fund&&DATA.fund.data;
+  if(F)o.TRENDS_BY_YEAR=Object.fromEntries(Object.keys(F).map(function(id){return [id,F[id].map(function(x){return {fy:x.fy,ebitda_m:r(x.ebitda_m),ebit_m:r(x.ebit_m),capex_s:r(x.capex_s),lev:r(x.lev,2),growth:r(x.growth)}})]}));
+  var T=DATA.thesis;
+  if(T)o.THESIS_RESULTS={panel:T.panel,models:(T.models||[]).map(function(m){return {label:m.label,n:m.ok?m.n:null,r2:m.ok?r(m.r2,2):null,coefs:m.ok?Object.fromEntries(Object.entries(m.coefs).map(function(e){return [e[0],{b:r(e[1].b,3),p:r(e[1].p,3)}]})):null}}),garch:(T.garch||[]).map(function(g){return {id:g.id,persistence:r(g.persistence,3),long_run_vol_pct:r(g.long_run_vol)}}),event_summary:T.event_summary};
+  var FC=DATA.forecast;
+  if(FC)o.FORECAST={model:FC.model,target:FC.target,validation:FC.validation,importance:FC.importance,peer_median_h1:FC.peer_median_h1,companies:Object.fromEntries(Object.entries(FC.companies||{}).map(function(e){return [e[0],{name:e[1].name,current:e[1].current,h1:e[1].h1,h2:e[1].h2}]})),notes:FC.notes};
+  var S=(DATA.scen&&DATA.scen.scenarios)||SCEN_DEFAULT;o.SCENARIOS=S;
+  if(DATA.src&&DATA.src.strategy)o.STRATEGY=DATA.src.strategy.map(function(x){return {company:x.id,date:x.date,title:x.title,detail:x.detail,source:x.src}});
+  var t=JSON.stringify(o);if(t.length>60000){delete o.STRATEGY;t=JSON.stringify(o)}
+  return t;
+}
+A1Chat.init({getContext:ctx,chips:['Why does A1 earn less than its peers?','How risky is A1 stock compared with peers?','What does the 2-year forecast say, and how far can I trust it?','Which scenario is most plausible and why?'],
+  welcome:'Ask about anything in this story: margins, risk, the forecast or the scenarios. Answers use only the data on this site and separate facts from hypotheses. Discussion material, not advice.'});
+})();
+</script>
+<div id="dash" style="position:fixed;inset:0;z-index:9999;background:#fff;display:none;flex-direction:column">
 <div style="display:flex;align-items:center;gap:16px;padding:10px 18px;background:#14141a;color:#fff;font:600 15px Inter,Arial,sans-serif">
 <button id="backStory" style="background:#C80000;color:#fff;border:0;border-radius:20px;padding:8px 18px;font:700 14px Inter,Arial,sans-serif;cursor:pointer">&#9664; Back to story</button><span>Dashboard: explore the data yourself</span></div>
 <iframe id="dashFrame" title="Dashboard" style="flex:1;border:0;width:100%;background:#fff"></iframe></div>
